@@ -1,6 +1,6 @@
 {application, 'aws_metadata',
- [{description, "An OTP application"},
-  {vsn, "0.1.0"},
+ [{description, "AWS instance metadata support for aws-erlang"},
+  {vsn, "0.0.1"},
   {registered, []},
   {mod, {aws_metadata_app, []}},
   {applications,
