@@ -119,7 +119,7 @@ code_change(_Prev, State, _Extra) ->
     {ok, State}.
 
 %%====================================================================
-%% Helper functions
+%% Internal functions
 %%====================================================================
 
 parse_options(Options) ->
