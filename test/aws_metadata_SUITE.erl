@@ -8,19 +8,7 @@
 all() -> [{group, mecked_metadata}].
 
 groups() -> [{mecked_metadata, [],
-              [test_make_client_with_defaults,
-               test_make_client_with_options]}].
-
-init_per_suite(Config) ->
-    application:load(aws_metadata),
-    {ok, Apps} = application:ensure_all_started(aws_metadata),
-    [{apps, Apps}|Config].
-
-end_per_suite(Config) ->
-    Apps = ?config(apps, Config),
-        lists:foreach(fun(App) -> ok = application:stop(App) end,
-                                      lists:reverse(Apps)),
-    Config.
+              [test_get_client]}].
 
 init_per_group(mecked_metadata, Config) ->
     RoleList = make_ref(),
@@ -59,31 +47,19 @@ end_per_group(mecked_metadata, Config) ->
     Config.
 
 init_per_testcase(_, Config) ->
-    Config.
+    application:load(aws_metadata),
+    {ok, Apps} = application:ensure_all_started(aws_metadata),
+    [{apps, Apps}|Config].
 
 end_per_testcase(_, Config) ->
-    aws_metadata:delete_client(),
+    Apps = ?config(apps, Config),
+        lists:foreach(fun(App) -> ok = application:stop(App) end,
+                                      lists:reverse(Apps)),
     Config.
 
-test_make_client_with_defaults(Config) ->
+test_get_client(Config) ->
     AccessKeyID = ?config(access_key, Config),
     SecretAccessKey = ?config(secret_key, Config),
-    {ok, ClientRef} = aws_metadata:make_client(),
-    ?assertMatch(#{region     := <<"us-east-1">>,
-                   endpoint   := <<"amazonaws.com">>,
-                   access_key := AccessKeyID,
-                   secret_key := SecretAccessKey},
-                 aws_metadata:get_client(ClientRef)).
-
-test_make_client_with_options(Config) ->
-    AccessKeyID = ?config(access_key, Config),
-    SecretAccessKey = ?config(secret_key, Config),
-    Region = <<"eu-west-1">>,
-    Endpoint = <<"example.com">>,
-    {ok, ClientRef} = aws_metadata:make_client([{region, Region},
-                                                {endpoint, Endpoint}]),
-    ?assertMatch(#{region     := Region,
-                   endpoint   := Endpoint,
-                   access_key := AccessKeyID,
-                   secret_key := SecretAccessKey},
-                 aws_metadata:get_client(ClientRef)).
+    Region = <<"us-east-1">>,
+    Client = aws_client:make_client(AccessKeyID, SecretAccessKey, Region),
+    ?assertMatch(Client, aws_metadata:get_client()).

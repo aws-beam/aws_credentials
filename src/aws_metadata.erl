@@ -20,19 +20,17 @@
 
 -export([start_link/0
         ,stop/0
-        ,make_client/0
-        ,make_client/1
-        ,get_client/1
-        ,delete_client/0
+        ,get_client/0
         ]).
 
--record(state, {client_ref = undefined :: reference() | undefined}).
+-record(state, {client = undefined :: map() | undefined}).
 
 %%====================================================================
 %% API
 %%====================================================================
 
-%% @doc Start the server that holds the credentials.
+%% @doc Start the server that stores and automatically updates client
+%% credentials fetched from the EC2 instance metadata service.
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
@@ -40,61 +38,24 @@ start_link() ->
 stop() ->
     gen_server:stop(?MODULE).
 
-%% @doc Make a new client from EC2 instance metadata returns a reference
-%% that can be passed to get_client/1.  Region and endpoint default to
-%% <<"us-east-1-a">> and <<"amazonaws.com">>, respectively.
-make_client() ->
-    make_client([]).
-
-%% @doc Make a new client from EC2 instance metadata.  Options is a
-%% proplist containing region and/or endpoint domain atom/binary pairs.
-%% Returns a reference that can be passed to get_client.
-make_client(Options) ->
-    gen_server:call(?MODULE, {make_client, Options}).
-
-%% @doc Get the client map associated with a reference returned from
-%% make_client or undefined if one doesn't exist.
-get_client(ClientRef) ->
-    case ets:lookup(aws_metadata, ClientRef) of
-        [{_Ref, _Type, Client}] -> Client;
-        [] -> undefined
-    end.
-
-%% @doc Delete all stored client state.
-delete_client() ->
-    gen_server:call(?MODULE, {delete_client}).
+%% @doc Get the client built with data fetched from the EC2 instance
+%% metadata service.
+get_client() ->
+    gen_server:call(?MODULE, {get_client}).
 
 %%====================================================================
 %% Behaviour
 %%====================================================================
 
 init(_Args) ->
-    ets:new(aws_metadata, [set, named_table]),
-    {ok, #state{}}.
+    {ok, Client} = fetch_client(),
+    {ok, #state{client=Client}}.
 
 terminate(_Reason, _State) ->
     ok.
 
-handle_call({make_client, Options}, _From,
-            State=#state{client_ref=undefined}) ->
-    {ok, Role} = get_role(),
-    {ok, AccessKeyID, SecretAccessKey, Expiry} = get_metadata(Role),
-    {Region, Endpoint} = parse_options(Options),
-    ClientRef = make_ref(),
-    true = ets:insert(aws_metadata,
-                      {ClientRef, aws_metadata, #{access_key => AccessKeyID,
-                                                  secret_key => SecretAccessKey,
-                                                  region     => Region,
-                                                  endpoint   => Endpoint}}),
-    setup_update_callback(Expiry, ClientRef, Role),
-    {reply, {ok, ClientRef}, State#state{client_ref=ClientRef}};
-%% Fail if a reference already exists.
-handle_call({make_client, _}, _From, State=#state{client_ref=ClientRef})
-  when is_reference(ClientRef)->
-    {reply, {error, already_exists}, State};
-handle_call({delete_client}, _From, _State) ->
-    ets:delete_all_objects(aws_metadata),
-    {reply, ok, #state{}};
+handle_call({get_client}, _From, State=#state{client=Client}) ->
+    {reply, Client, State};
 handle_call(Args, _From, State) ->
     error_logger:warning_msg("Unknown call: ~p~n", [Args]),
     {noreply, State}.
@@ -103,14 +64,9 @@ handle_cast(Message, State) ->
     error_logger:warning_msg("Unknown cast: ~p~n", [Message]),
     {noreply, State}.
 
-handle_info({refresh_client, ClientRef, Role}, State) ->
-    {ok, AccessKeyID, SecretAccessKey, Expiry} = get_metadata(Role),
-    Client = get_client(ClientRef),
-    true = ets:insert(aws_metadata,
-                      {ClientRef, Client#{access_key => AccessKeyID,
-                                          secret_key => SecretAccessKey}}),
-    setup_update_callback(Expiry, ClientRef, Role),
-    {noreply, State};
+handle_info({refresh_client}, State) ->
+    {ok, Client} = fetch_client(),
+    {noreply, State=#state{client=Client}};
 handle_info(Message, State) ->
     error_logger:warning_msg("Unknown message: ~p~n", [Message]),
     {noreply, State}.
@@ -122,16 +78,25 @@ code_change(_Prev, State, _Extra) ->
 %% Internal functions
 %%====================================================================
 
-parse_options(Options) ->
-    Region = proplists:get_value(region, Options, <<"us-east-1">>),
-    Endpoint = proplists:get_value(endpoint, Options, <<"amazonaws.com">>),
-    {Region, Endpoint}.
+fetch_client() ->
+    {ok, Client, ExpirationTime} = get_metadata(),
+    setup_update_callback(ExpirationTime),
+    {ok, Client}.
 
-get_role() ->
+get_metadata() ->
+    {ok, Role} = fetch_role(),
+    {ok, AccessKeyID, SecretAccessKey, ExpirationTime} = fetch_metadata(Role),
+    %% FIXME(jkakar) Get the region from the instance-identity/document
+    %% metadata.
+    Region = <<"us-east-1">>,
+    Client = aws_client:make_client(AccessKeyID, SecretAccessKey, Region),
+    {ok, Client, ExpirationTime}.
+
+fetch_role() ->
     {ok, 200, _, ClientRef} = hackney:get(?CREDENTIAL_URL),
     hackney:body(ClientRef).
 
-get_metadata(Role) ->
+fetch_metadata(Role) ->
     {ok, 200, _, ClientRef} = hackney:get([?CREDENTIAL_URL, Role]),
     {ok, Body} = hackney:body(ClientRef),
     Map = jsx:decode(Body, [return_maps]),
@@ -139,14 +104,14 @@ get_metadata(Role) ->
      maps:get(<<"SecretAccessKey">>, Map),
      maps:get(<<"Expiration">>, Map)}.
 
-setup_update_callback(Timestamp, Ref, Role) ->
-    AlertAt = seconds_until_timestamp(Timestamp) - ?ALERT_BEFORE_EXPIRY,
-    erlang:send_after(AlertAt, ?MODULE, {refresh_client, Ref, Role}).
+setup_update_callback(Timestamp) ->
+    RefreshAfter = seconds_until_timestamp(Timestamp) - ?ALERT_BEFORE_EXPIRY,
+    erlang:send_after(RefreshAfter, ?MODULE, {refresh_client}).
 
 seconds_until_timestamp(Timestamp) ->
     calendar:datetime_to_gregorian_seconds(iso8601:parse(Timestamp))
     - (erlang_system_seconds()
-       + calendar:datetime_to_gregorian_seconds({{1970,1,1},{0,0,0}})).
+       + calendar:datetime_to_gregorian_seconds({{1970, 1, 1}, {0, 0, 0}})).
 
 erlang_system_seconds() ->
     try
@@ -154,5 +119,5 @@ erlang_system_seconds() ->
     catch
         error:undef -> % Pre 18.0
             {MegaSecs, Secs, MicroSecs} = os:timestamp(),
-            round(((MegaSecs*1000000 + Secs)*1000000 + MicroSecs) / 1000000)
+            round(((MegaSecs * 1000000 + Secs) * 1000000 + MicroSecs) / 1000000)
     end.
