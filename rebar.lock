@@ -1,0 +1,12 @@
+[{<<"aws">>,
+  {git,"https://github.com/jkakar/aws-erlang.git",
+       {ref,"42a243d3ab9c3b0d1095bed50ba1c31d3d7dbce2"}},
+  0},
+ {<<"erlware_commons">>,{pkg,<<"erlware_commons">>,<<"0.15.0">>},1},
+ {<<"hackney">>,{pkg,<<"hackney">>,<<"1.0.6">>},1},
+ {<<"idna">>,{pkg,<<"idna">>,<<"1.0.2">>},2},
+ {<<"jsx">>,
+  {git,"git://github.com/talentdeficit/jsx.git",
+       {ref,"9d4534edc57686f28e16c5b1f6902a7e99c8b035"}},
+  1},
+ {<<"ssl_verify_hostname">>,{pkg,<<"ssl_verify_hostname">>,<<"1.0.1">>},2}].

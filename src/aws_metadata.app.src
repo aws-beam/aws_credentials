@@ -1,0 +1,16 @@
+{application, 'aws_metadata',
+ [{description, "AWS instance metadata support for aws-erlang"},
+  {vsn, "0.0.1"},
+  {registered, []},
+  {mod, {aws_metadata_app, []}},
+  {applications,
+   [kernel,
+    stdlib
+   ]},
+  {env,[]},
+  {modules, []},
+
+  {contributors, []},
+  {licenses, []},
+  {links, []}
+ ]}.
