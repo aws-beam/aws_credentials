@@ -2,10 +2,9 @@
 
 [![Build Status](https://travis-ci.org/jkakar/aws-erlang-metadata.svg)](https://travis-ci.org/jkakar/aws-erlang-metadata)
 
-A thin wrapper around [aws-erlang](https://github.com/jkakar/aws-erlang) that
-adds support for managing credentials retrieved from instance metadata.
-Credentials are automatically refreshed in the background and up-to-date each
-time they're retrieved.
+Fetch up-to-date credentials from the EC2 instance metadata service to use
+with [aws-erlang](https://github.com/jkakar/aws-erlang).  Credentials are
+automatically refreshed in the background.
 
 Here is an example:
 
