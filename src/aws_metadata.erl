@@ -41,7 +41,7 @@ stop() ->
 %% @doc Get the client built with data fetched from the EC2 instance
 %% metadata service.
 get_client() ->
-    gen_server:call(?MODULE, {get_client}).
+    gen_server:call(?MODULE, get_client).
 
 %%====================================================================
 %% Behaviour
@@ -54,7 +54,7 @@ init(_Args) ->
 terminate(_Reason, _State) ->
     ok.
 
-handle_call({get_client}, _From, State=#state{client=Client}) ->
+handle_call(get_client, _From, State=#state{client=Client}) ->
     {reply, Client, State};
 handle_call(Args, _From, State) ->
     error_logger:warning_msg("Unknown call: ~p~n", [Args]),
@@ -64,7 +64,7 @@ handle_cast(Message, State) ->
     error_logger:warning_msg("Unknown cast: ~p~n", [Message]),
     {noreply, State}.
 
-handle_info({refresh_client}, State) ->
+handle_info(refresh_client, State) ->
     {ok, Client} = fetch_client(),
     {noreply, State=#state{client=Client}};
 handle_info(Message, State) ->
@@ -106,7 +106,7 @@ fetch_metadata(Role) ->
 
 setup_update_callback(Timestamp) ->
     RefreshAfter = seconds_until_timestamp(Timestamp) - ?ALERT_BEFORE_EXPIRY,
-    erlang:send_after(RefreshAfter, ?MODULE, {refresh_client}).
+    erlang:send_after(RefreshAfter, ?MODULE, refresh_client).
 
 seconds_until_timestamp(Timestamp) ->
     calendar:datetime_to_gregorian_seconds(iso8601:parse(Timestamp))
