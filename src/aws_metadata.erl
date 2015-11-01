@@ -4,6 +4,8 @@
 
 -define(CREDENTIAL_URL,
         <<"http://169.254.169.254/latest/meta-data/iam/security-credentials/">>).
+-define(DOCUMENT_URL,
+        <<"http://169.254.169.254/latest/dynamic/instance-identity/document">>).
 %% As per
 %% http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html#instance-metadata-security-credentials
 %% We make new credentials available at least five minutes prior to the
@@ -30,7 +32,7 @@
 %%====================================================================
 
 %% @doc Start the server that stores and automatically updates client
-%% credentials fetched from the EC2 instance metadata service.
+%% credentials fetched from the instance metadata service.
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
@@ -38,8 +40,8 @@ start_link() ->
 stop() ->
     gen_server:stop(?MODULE).
 
-%% @doc Get the client built with data fetched from the EC2 instance
-%% metadata service.
+%% @doc Get the client built with data fetched from the instance metadata
+%% service.
 get_client() ->
     gen_server:call(?MODULE, get_client).
 
@@ -79,18 +81,12 @@ code_change(_Prev, State, _Extra) ->
 %%====================================================================
 
 fetch_client() ->
-    {ok, Client, ExpirationTime} = get_metadata(),
-    setup_update_callback(ExpirationTime),
-    {ok, Client}.
-
-get_metadata() ->
     {ok, Role} = fetch_role(),
     {ok, AccessKeyID, SecretAccessKey, ExpirationTime} = fetch_metadata(Role),
-    %% FIXME(jkakar) Get the region from the instance-identity/document
-    %% metadata.
-    Region = <<"us-east-1">>,
+    {ok, Region} = fetch_document(),
     Client = aws_client:make_client(AccessKeyID, SecretAccessKey, Region),
-    {ok, Client, ExpirationTime}.
+    setup_update_callback(ExpirationTime),
+    {ok, Client}.
 
 fetch_role() ->
     {ok, 200, _, ClientRef} = hackney:get(?CREDENTIAL_URL),
@@ -103,6 +99,12 @@ fetch_metadata(Role) ->
     {ok, maps:get(<<"AccessKeyId">>, Map),
      maps:get(<<"SecretAccessKey">>, Map),
      maps:get(<<"Expiration">>, Map)}.
+
+fetch_document() ->
+    {ok, 200, _, ClientRef} = hackney:get(?DOCUMENT_URL),
+    {ok, Body} = hackney:body(ClientRef),
+    Map = jsx:decode(Body, [return_maps]),
+    {ok, maps:get(<<"region">>, Map)}.
 
 setup_update_callback(Timestamp) ->
     RefreshAfter = seconds_until_timestamp(Timestamp) - ?ALERT_BEFORE_EXPIRY,
