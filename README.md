@@ -9,16 +9,8 @@ automatically refreshed in the background.
 Here is an example:
 
 ```erlang
+{ok, _} = application:ensure_all_started(aws_metadata),
 Client = aws_metadata:get_client(),
 {ok, Output, _Response} = aws_kinesis:list_streams(Client, #{}, []),
-io:format("~p~n", [Output]).
-```
-
-or shortened with a macro:
-
-```erlang
--define(AWS_CLIENT, aws_metadata:get_client()).
-
-{ok, Output, _Response} = aws_kinesis:list_streams(?AWS_CLIENT, #{}, []),
 io:format("~p~n", [Output]).
 ```
