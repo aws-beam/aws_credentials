@@ -37,7 +37,7 @@ init_per_group(mecked_metadata, Config) ->
       \"instanceType\" : \"t2.micro\",
       \"instanceId\" : \"i-a40e9300\",
       \"billingProducts\" : null,
-      \"accountId\" : \"173973591345\",
+      \"accountId\" : \"173533974591\",
       \"imageId\" : \"ami-52978200\",
       \"pendingTime\" : \"2015-10-31T21:15:54Z\",
       \"kernelId\" : null,
