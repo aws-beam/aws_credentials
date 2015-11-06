@@ -2,10 +2,6 @@
 
 -behaviour(gen_server).
 
--define(CREDENTIAL_URL,
-        <<"http://169.254.169.254/latest/meta-data/iam/security-credentials/">>).
--define(DOCUMENT_URL,
-        <<"http://169.254.169.254/latest/dynamic/instance-identity/document">>).
 %% As per
 %% http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html#instance-metadata-security-credentials
 %% We make new credentials available at least five minutes prior to the
@@ -81,30 +77,9 @@ code_change(_Prev, State, _Extra) ->
 %%====================================================================
 
 fetch_client() ->
-    {ok, Role} = fetch_role(),
-    {ok, AccessKeyID, SecretAccessKey, ExpirationTime} = fetch_metadata(Role),
-    {ok, Region} = fetch_document(),
-    Client = aws_client:make_client(AccessKeyID, SecretAccessKey, Region),
+    {ok, Client, ExpirationTime} = aws_metadata_client:fetch(),
     setup_update_callback(ExpirationTime),
     {ok, Client}.
-
-fetch_role() ->
-    {ok, 200, _, ClientRef} = hackney:get(?CREDENTIAL_URL),
-    hackney:body(ClientRef).
-
-fetch_metadata(Role) ->
-    {ok, 200, _, ClientRef} = hackney:get([?CREDENTIAL_URL, Role]),
-    {ok, Body} = hackney:body(ClientRef),
-    Map = jsx:decode(Body, [return_maps]),
-    {ok, maps:get(<<"AccessKeyId">>, Map),
-     maps:get(<<"SecretAccessKey">>, Map),
-     maps:get(<<"Expiration">>, Map)}.
-
-fetch_document() ->
-    {ok, 200, _, ClientRef} = hackney:get(?DOCUMENT_URL),
-    {ok, Body} = hackney:body(ClientRef),
-    Map = jsx:decode(Body, [return_maps]),
-    {ok, maps:get(<<"region">>, Map)}.
 
 setup_update_callback(Timestamp) ->
     RefreshAfter = seconds_until_timestamp(Timestamp) - ?ALERT_BEFORE_EXPIRY,
