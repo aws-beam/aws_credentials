@@ -5,7 +5,8 @@
   {mod, {aws_metadata_app, []}},
   {applications,
    [kernel,
-    stdlib
+    stdlib,
+    aws
    ]},
   {env,[]},
   {modules, []},
