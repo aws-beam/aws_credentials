@@ -81,8 +81,8 @@ init_per_testcase(_, Config) ->
 
 end_per_testcase(_, Config) ->
     Apps = ?config(apps, Config),
-        lists:foreach(fun(App) -> ok = application:stop(App) end,
-                                      lists:reverse(Apps)),
+    lists:foreach(fun(App) -> ok = application:stop(App) end,
+                  lists:reverse(Apps)),
     Config.
 
 test_get_client(Config) ->
