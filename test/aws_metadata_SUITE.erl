@@ -6,14 +6,16 @@
 -compile(export_all).
 
 -define(CREDENTIAL_URL,
-        <<"http://169.254.169.254/latest/meta-data/iam/security-credentials/">>).
+        "http://169.254.169.254/latest/meta-data/iam/security-credentials/").
 -define(DOCUMENT_URL,
-        <<"http://169.254.169.254/latest/dynamic/instance-identity/document">>).
+        "http://169.254.169.254/latest/dynamic/instance-identity/document").
 
-all() -> [{group, mecked_metadata}].
+all() -> [{group, boot}, {group, mecked_metadata}].
 
 groups() -> [{mecked_metadata, [],
-              [test_get_client]}].
+              [test_get_client]},
+             {boot, [],
+              [fail_boot, fail_noboot]}].
 
 init_per_group(mecked_metadata, Config) ->
     RoleList = make_ref(),
@@ -49,12 +51,11 @@ init_per_group(mecked_metadata, Config) ->
       \"privateIp\" : \"172.30.0.79\",
       \"devpayProductCodes\" : null
     }">>,
-    meck:expect(hackney, get, fun(URL=?CREDENTIAL_URL) when is_binary(URL) ->
+    meck:expect(hackney, get, fun(<<?CREDENTIAL_URL>>) ->
                                       {ok, 200, {}, RoleList};
-                                 ([URL=?CREDENTIAL_URL, Rolef]) when is_binary(URL)
-                                                     andalso Role == Rolef ->
+                                 (<<?CREDENTIAL_URL, Rolef/binary>>) when Role == Rolef ->
                                       {ok, 200, {}, Credentials};
-                                 (URL=?DOCUMENT_URL)  when is_binary(URL) ->
+                                 (<<?DOCUMENT_URL>>) ->
                                       {ok, 200, {}, Document}
                               end),
 
@@ -68,12 +69,23 @@ init_per_group(mecked_metadata, Config) ->
     [{access_key, AccessKeyID},
      {secret_key, SecretAccessKey},
      {expiry, Expiry},
-     {region, Region}|Config].
+     {region, Region}|Config];
+init_per_group(boot, Config) ->
+    meck:new(aws_metadata_client, [no_link, passthrough]),
+    meck:expect(aws_metadata_client, fetch, fun() -> error(mocked_bad) end),
+    Config.
 
 end_per_group(mecked_metadata, Config) ->
     meck:unload(hackney),
+    Config;
+end_per_group(boot, Config) ->
+    meck:unload(aws_metadata_client),
     Config.
 
+init_per_testcase(fail_boot, Config) ->
+    Config;
+init_per_testcase(fail_noboot, Config) ->
+    Config;
 init_per_testcase(_, Config) ->
     application:load(aws_metadata),
     {ok, Apps} = application:ensure_all_started(aws_metadata),
@@ -91,3 +103,17 @@ test_get_client(Config) ->
     Region = ?config(region, Config),
     Client = aws_client:make_client(AccessKeyID, SecretAccessKey, Region),
     ?assertMatch(Client, aws_metadata:get_client()).
+
+fail_boot(_Config) ->
+    application:load(aws_metadata),
+    application:set_env(aws_metadata, fail_if_unavailable, false),
+    {ok, Apps} = application:ensure_all_started(aws_metadata),
+    _ = [application:stop(App) || App <- Apps],
+    application:set_env(aws_metadata, fail_if_unavailable, true),
+    ok.
+
+fail_noboot(_Config) ->
+    application:load(aws_metadata),
+    application:set_env(aws_metadata, fail_if_unavailable, true),
+    ?assertMatch({error, {aws_metadata,_}},
+                 application:ensure_all_started(aws_metadata)).
