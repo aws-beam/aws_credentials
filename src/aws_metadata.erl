@@ -77,9 +77,17 @@ code_change(_Prev, State, _Extra) ->
 %%====================================================================
 
 fetch_client() ->
-    {ok, Client, ExpirationTime} = aws_metadata_client:fetch(),
-    setup_update_callback(ExpirationTime),
-    {ok, Client}.
+    ShouldCatch = not application:get_env(aws_metadata, fail_if_unavailable, true),
+    try
+        {ok, Client, ExpirationTime} = aws_metadata_client:fetch(),
+        setup_update_callback(ExpirationTime),
+        {ok, Client}
+    catch
+        E:R when ShouldCatch ->
+            error_logger:info_msg("aws_metadata ignoring exception ~p:~p (~p)~n",
+                                  [E,R,erlang:get_stacktrace()]),
+            {ok, undefined}
+    end.
 
 setup_update_callback(Timestamp) ->
     RefreshAfter = seconds_until_timestamp(Timestamp) - ?ALERT_BEFORE_EXPIRY,

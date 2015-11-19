@@ -6,9 +6,12 @@
   {applications,
    [kernel,
     stdlib,
-    aws
+    aws,
+    hackney
    ]},
-  {env,[]},
+  {env,[
+    {fail_if_unavailable, true}
+  ]},
   {modules, []},
 
   {contributors, []},

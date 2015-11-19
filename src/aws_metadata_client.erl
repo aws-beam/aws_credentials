@@ -19,7 +19,7 @@ fetch_role() ->
     hackney:body(ClientRef).
 
 fetch_metadata(Role) ->
-    {ok, 200, _, ClientRef} = hackney:get([?CREDENTIAL_URL, Role]),
+    {ok, 200, _, ClientRef} = hackney:get(iolist_to_binary([?CREDENTIAL_URL, Role])),
     {ok, Body} = hackney:body(ClientRef),
     Map = jsx:decode(Body, [return_maps]),
     {ok, maps:get(<<"AccessKeyId">>, Map),
