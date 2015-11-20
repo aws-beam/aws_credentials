@@ -1,6 +1,6 @@
 [{<<"aws">>,
   {git,"https://github.com/jkakar/aws-erlang.git",
-       {ref,"42a243d3ab9c3b0d1095bed50ba1c31d3d7dbce2"}},
+       {ref,"7be0fc4aab0ea757d8f3aa497ca7621dd2f877d4"}},
   0},
  {<<"erlware_commons">>,{pkg,<<"erlware_commons">>,<<"0.15.0">>},1},
  {<<"hackney">>,{pkg,<<"hackney">>,<<"1.0.6">>},1},
