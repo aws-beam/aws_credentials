@@ -26,6 +26,7 @@ init_per_group(mecked_metadata, Config) ->
     SecretAccessKey = <<"SecretAccessKey">>,
     Expiry = <<"2019-09-25T23:43:56Z">>,
     Region = <<"ap-southeast-1">>,
+    Token = <<"token">>,
     CredentialsBody = <<"{
       \"Code\" : \"Success\",
       \"LastUpdated\" : \"2015-09-25T17:19:52Z\",
@@ -69,6 +70,7 @@ init_per_group(mecked_metadata, Config) ->
     [{access_key, AccessKeyID},
      {secret_key, SecretAccessKey},
      {expiry, Expiry},
+     {token, Token},
      {region, Region}|Config];
 init_per_group(boot, Config) ->
     meck:new(aws_metadata_client, [no_link, passthrough]),
@@ -101,7 +103,8 @@ test_get_client(Config) ->
     AccessKeyID = ?config(access_key, Config),
     SecretAccessKey = ?config(secret_key, Config),
     Region = ?config(region, Config),
-    Client = aws_client:make_client(AccessKeyID, SecretAccessKey, Region),
+    Token = ?config(token, Config),
+    Client = aws_client:make_temporary_client(AccessKeyID, SecretAccessKey, Token, Region),
     ?assertMatch(Client, aws_metadata:get_client()).
 
 fail_boot(_Config) ->
