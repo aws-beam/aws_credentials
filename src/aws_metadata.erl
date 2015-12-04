@@ -14,6 +14,7 @@
         ,handle_call/3
         ,handle_cast/2
         ,handle_info/2
+        ,format_status/2
         ]).
 
 -export([start_link/0
@@ -64,13 +65,16 @@ handle_cast(Message, State) ->
 
 handle_info(refresh_client, State) ->
     {ok, Client} = fetch_client(),
-    {noreply, State=#state{client=Client}};
+    {noreply, State#state{client=Client}};
 handle_info(Message, State) ->
     error_logger:warning_msg("Unknown message: ~p~n", [Message]),
     {noreply, State}.
 
 code_change(_Prev, State, _Extra) ->
     {ok, State}.
+
+format_status(_, [_PDict, State]) ->
+    [{data, [{"State", State#state{client=client_information_redacted}}]}].
 
 %%====================================================================
 %% Internal functions
