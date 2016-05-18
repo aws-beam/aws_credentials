@@ -7,6 +7,7 @@
 %% We make new credentials available at least five minutes prior to the
 %% expiration of the old credentials.
 -define(ALERT_BEFORE_EXPIRY, 4 * 60).
+-define(RETRY_DELAY, timer:seconds(5)).
 
 -export([init/1
         ,terminate/2
@@ -90,11 +91,15 @@ fetch_client() ->
         E:R when ShouldCatch ->
             error_logger:info_msg("aws_metadata ignoring exception ~p:~p (~p)~n",
                                   [E,R,erlang:get_stacktrace()]),
+            setup_retry_callback(?RETRY_DELAY),
             {ok, undefined}
     end.
 
 setup_update_callback(Timestamp) ->
     RefreshAfter = seconds_until_timestamp(Timestamp) - ?ALERT_BEFORE_EXPIRY,
+    erlang:send_after(RefreshAfter, ?MODULE, refresh_client).
+
+setup_retry_callback(RefreshAfter) ->
     erlang:send_after(RefreshAfter, ?MODULE, refresh_client).
 
 seconds_until_timestamp(Timestamp) ->
