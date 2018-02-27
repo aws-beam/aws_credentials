@@ -93,6 +93,10 @@ init_per_testcase(_, Config) ->
     {ok, Apps} = application:ensure_all_started(aws_metadata),
     [{apps, Apps}|Config].
 
+end_per_testcase(Testcase, Config)
+  when Testcase == fail_boot;
+       Testcase == fail_noboot ->
+    Config;
 end_per_testcase(_, Config) ->
     Apps = ?config(apps, Config),
     lists:foreach(fun(App) -> ok = application:stop(App) end,
