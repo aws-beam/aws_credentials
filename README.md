@@ -43,15 +43,18 @@ The Credentials map typically looks like the following:
 ```
 Not all providers will populate all map keys.  
 
-The expiration time from a provider can either be expressed as the atom
-`infinity`, epoch seconds as an integer or as an ISO8601 time/date string
-(e.g., "2019-12T23:23:45Z"). If you specify the expiration as `infinity`
-the library will *never* attempt to refresh credentials.
+The expiration time from a provider can either be expressed as: 
+* the atom `infinity`, 
+* epoch seconds as an integer, or, 
+* as an ISO8601 time/date string (e.g., "2019-03-14T23:45:56Z"). 
 
-When credentials have been found, they will be cached in a gen_server
-until the credential's expiration time. 5 minutes before expiration time
-the gen_server will attempt to acquire new credentials, so credentials 
-will automatically be refreshed in the background.
+If you specify the expiration as `infinity` the library will *never* attempt to
+refresh credentials.
+
+When credentials have been found, they will be cached in a gen_server until the
+credential's expiration time. 5 minutes before expiration time the gen_server
+will attempt to acquire new credentials, so credentials will automatically be
+refreshed in the background.
 
 Usage
 -----

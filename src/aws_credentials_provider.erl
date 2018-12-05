@@ -30,7 +30,8 @@
 -export([fetch/0, fetch/1]).
 
 -callback fetch ( Options :: proplists:proplist() ) -> {ok, Credentials :: map(),
-                                                        Expiration :: binary() | infinity} | {error, Reason :: term()}.
+                                                        Expiration :: binary() | pos_integer() | infinity}
+                                                       | {error, Reason :: term()}.
 
 
 -define(DEFAULT_PROVIDERS, [aws_credentials_env, aws_credentials_file, aws_credentials_ecs, aws_credentials_ec2]).
