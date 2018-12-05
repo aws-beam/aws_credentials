@@ -1,9 +1,4 @@
-%%%-------------------------------------------------------------------
-%% @doc aws_metadata top level supervisor.
-%% @end
-%%%-------------------------------------------------------------------
-
--module(aws_metadata_sup).
+-module(aws_credentials_sup).
 
 -behaviour(supervisor).
 
@@ -29,10 +24,10 @@ start_link() ->
 %% Child :: {Id,StartFunc,Restart,Shutdown,Type,Modules}
 init([]) ->
     {ok, {{one_for_all, 0, 1},
-          [{aws_metadata, {aws_metadata, start_link, []},
+          [{aws_credentials, {aws_credentials, start_link, []},
             permanent,
             5000,
             worker,
-            [aws_metadata]}]
+            [aws_credentials]}]
          }
     }.

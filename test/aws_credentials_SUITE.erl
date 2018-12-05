@@ -1,4 +1,4 @@
--module(aws_metadata_SUITE).
+-module(aws_credentials_SUITE).
 
 -include_lib("common_test/include/ct.hrl").
 -include_lib("eunit/include/eunit.hrl").

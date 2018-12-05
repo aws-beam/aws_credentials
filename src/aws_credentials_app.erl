@@ -1,9 +1,4 @@
-%%%-------------------------------------------------------------------
-%% @doc aws_metadata public API
-%% @end
-%%%-------------------------------------------------------------------
-
--module(aws_metadata_app).
+-module(aws_credentials_app).
 
 -behaviour(application).
 
@@ -16,7 +11,8 @@
 %%====================================================================
 
 start(_StartType, _StartArgs) ->
-    aws_metadata_sup:start_link().
+    aws_credentials_httpc:start(),
+    aws_credentials_sup:start_link().
 
 %%--------------------------------------------------------------------
 stop(_State) ->
