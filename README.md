@@ -29,7 +29,9 @@ the module name to the default list of modules to attempt.
 
 ### Provider return values ###
 Providers are expected to return either `{error, Reason :: term()}` or
-`{ok, Credentials :: map()}`. This map typically looks like the following:
+`{ok, Credentials :: map(), Expiration :: infinity | binary() | pos_integer()}`. 
+The Credentials map typically looks like the following:
+
 ```erlang
 #{
   provider_source => Provider :: atom(),
@@ -40,6 +42,11 @@ Providers are expected to return either `{error, Reason :: term()}` or
 }
 ```
 Not all providers will populate all map keys.  
+
+The expiration time from a provider can either be expressed as the atom
+`infinity`, epoch seconds as an integer or as an ISO8601 time/date string
+(e.g., "2019-12T23:23:45Z"). If you specify the expiration as `infinity`
+the library will *never* attempt to refresh credentials.
 
 When credentials have been found, they will be cached in a gen_server
 until the credential's expiration time. 5 minutes before expiration time
@@ -90,6 +97,6 @@ Copyright (C) 2018 by Mark R. Allen.
 [1]: https://docs.aws.amazon.com/cli/latest/userguide/cli-config-files.html
 [2]: https://github.com/erlsci/iso8601
 [3]: https://github.com/aws-beam/eini
-[4]: blob/master/src/aws_credentials_provider.erl
+[4]: src/aws_credentials_provider.erl
 [5]: https://github.com/aws-beam/aws-erlang-metadata
 [6]: https://github.com/sile/jsone
