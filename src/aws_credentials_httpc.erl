@@ -3,8 +3,8 @@
 %% return `{ok, Status :: non_neg_integer(), Body :: binary(), Headers :: map()}'
 %% or `{error, Reasons :: [term()]}'.
 %%
-%% On errors, there will be a number of retries with a delay equal to 100
-%% milliseconds times the number of retries minus retries left. (So the first
+%% On errors, there will be a number of attempts with a delay equal to 100
+%% milliseconds times the number of tries minus tries left. (So the first
 %% delay would be 100 millseconds. The second delay would be 200 milliseconds,
 %% and so on...)
 %% @end
@@ -15,7 +15,7 @@
 -define(PROFILE, aws_credentials).
 -define(TIMEOUT, 10000). % 10 sec
 -define(CONNECT_TIMEOUT, 3000). % 3 sec
--define(DEFAULT_RETRIES, 3).
+-define(DEFAULT_TRIES, 3).
 -define(DELAY, 100). % 100 microseconds
 
 start() ->
@@ -23,7 +23,7 @@ start() ->
 
 %% @doc Attempt to get a URL with the 3 retries. 3 is the default.
 get(URL) ->
-  get(URL, ?DEFAULT_RETRIES).
+  get(URL, ?DEFAULT_TRIES).
 
 %% @doc Attempt to get a URL with a specified positive number of retries.
 %% (Minimum of 1.)
@@ -33,26 +33,28 @@ get(URL) ->
 %% ok tuple with a status code of 500 or 404 or some other HTTP error
 %% code and no data.
 -spec get( URL :: binary(),
-           Retries :: pos_integer() ) -> {ok, { Status :: non_neg_integer(),
-                                                Body :: binary(),
-                                                Headers :: map() } }
-                                         | {error, Reasons :: [term()]}.
-get(URL, Retries) when is_binary(URL)
-                       andalso is_integer(Retries)
-                       andalso Retries > 0 ->
-  get(URL, Retries + 1, Retries, []).
+           Tries :: pos_integer() ) -> {ok, { Status :: non_neg_integer(),
+                                              Body :: binary(),
+                                              Headers :: map() } }
+                                       | {error, Reasons :: [term()]}.
+get(URL, Tries) when is_binary(URL)
+                       andalso is_integer(Tries)
+                       andalso Tries > 0 ->
+  get(URL, Tries, Tries, []).
 
-get(_URL, _Base, 0, Errs) -> {error, Errors};
-get(URL, Base, Retries, Errors) ->
+get(_URL, _Tries, 0, Errs) -> {error, lists:reverse(Errs)};
+get(URL, Tries, Remaining, Errs) ->
     case make_request(URL) of
       {ok, {{_HttpVer, Status, _Reason}, Body, Headers}} ->
         {ok, Status, Body, maps:from_list(Headers)};
 
       Error ->
-        error_logger:error_msg("Error fetching URL (retry attempts remaining: ~p) ~p: ~p.",
-                               [Retries - 1, URL, Error]),
-        timer:sleep((Base - Retries)*?DELAY),
-        get(URL, Base, Retries - 1, [ Error | Errs ])
+        NewRemaining = Remaining - 1,
+        error_logger:error_msg("Error fetching URL (attempts left: "
+                               "~p of ~p) ~p: ~p.",
+                               [NewRemaining, Tries, URL, Error]),
+        timer:sleep((Tries - NewRemaining)*?DELAY),
+        get(URL, Tries, NewRemaining, [ Error | Errs ])
     end.
 
 make_request(URL) ->

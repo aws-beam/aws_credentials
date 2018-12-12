@@ -15,6 +15,16 @@
 -define(RETRY_DELAY, 5000). % 5 seconds
 -define(GREGORIAN_TO_EPOCH_SECONDS, 62167219200).
 
+-ifdef(OTP_RELEASE).
+%% OTP 21 or newer, let's just be explicit about it...
+-if(?OTP_RELEASE >= 21).
+-define(CATCH, catch E:R:ST when ShouldCatch ->).
+-endif.
+-else.
+%% OTP 20 or older
+-define(CATCH, catch E:R when ShouldCatch -> ST = erlang:get_stacktrace(),).
+-endif.
+
 -export([init/1
         ,terminate/2
         ,code_change/3
@@ -110,8 +120,7 @@ fetch_credentials() ->
         {ok, Client, ExpirationTime} = aws_credentials_provider:fetch(),
         setup_update_callback(ExpirationTime),
         {ok, Client}
-    catch
-        E:R:ST when ShouldCatch ->
+    ?CATCH
             error_logger:info_msg("aws_credentials ignoring exception ~p:~p (~p)~n",
                                   [E,R,ST]),
             setup_callback(?RETRY_DELAY),
