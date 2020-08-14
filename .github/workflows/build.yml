@@ -44,7 +44,7 @@ jobs:
         name: ct-logs
         path: _build/test/logs
     - name: Run Checks
-      run: rebar3 dialyzer
+      run: rebar3 do dialyzer, xref
     - name: Create Cover Reports
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
