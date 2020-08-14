@@ -128,7 +128,7 @@ fetch_credentials() ->
     end.
 
 setup_update_callback(infinity) -> ok;
-setup_update_callback(Expires) when is_list(Expires) ->
+setup_update_callback(Expires) when is_binary(Expires) ->
     RefreshAfter = seconds_until_timestamp(Expires) - ?ALERT_BEFORE_EXPIRY,
     setup_callback(RefreshAfter);
 setup_update_callback(Expires) when is_integer(Expires) ->

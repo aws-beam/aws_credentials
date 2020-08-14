@@ -10,33 +10,28 @@
 -define(DOCUMENT_URL,
         "http://169.254.169.254/latest/dynamic/instance-identity/document").
 
-all() -> [{group, boot}, {group, mecked_metadata}].
+all() -> [{group, boot}].
 
-groups() -> [{mecked_metadata, [],
-              [test_get_client]},
-             {boot, [],
+groups() -> [{boot, [],
               [fail_boot, fail_noboot]}].
 
 init_per_group(mecked_metadata, Config) ->
-    RoleList = make_ref(),
-    Credentials = make_ref(),
-    Document = make_ref(),
     Role = <<"aws-metadata-user">>,
     AccessKeyID = <<"AccessKeyID">>,
     SecretAccessKey = <<"SecretAccessKey">>,
-    Expiry = <<"2019-09-25T23:43:56Z">>,
+    Expiry = <<"2025-09-25T23:43:56Z">>,
     Region = <<"ap-southeast-1">>,
     Token = <<"token">>,
-    CredentialsBody = <<"{
+    Credentials = <<"{
       \"Code\" : \"Success\",
       \"LastUpdated\" : \"2015-09-25T17:19:52Z\",
       \"Type\" : \"AWS-HMAC\",
       \"AccessKeyId\" : \"AccessKeyID\",
       \"SecretAccessKey\" : \"SecretAccessKey\",
       \"Token\" : \"token\",
-      \"Expiration\" : \"2019-09-25T23:43:56Z\"
+      \"Expiration\" : \"2025-09-25T23:43:56Z\"
     }">>,
-    DocumentBody = <<"{
+    Document = <<"{
       \"instanceType\" : \"t2.micro\",
       \"instanceId\" : \"i-a40e9300\",
       \"billingProducts\" : null,
@@ -52,36 +47,29 @@ init_per_group(mecked_metadata, Config) ->
       \"privateIp\" : \"172.30.0.79\",
       \"devpayProductCodes\" : null
     }">>,
-    meck:expect(hackney, get, fun(<<?CREDENTIAL_URL>>) ->
-                                      {ok, 200, {}, RoleList};
-                                 (<<?CREDENTIAL_URL, Rolef/binary>>) when Role == Rolef ->
-                                      {ok, 200, {}, Credentials};
-                                 (<<?DOCUMENT_URL>>) ->
-                                      {ok, 200, {}, Document}
-                              end),
-
-    meck:expect(hackney, body, fun(Ref) when Ref == RoleList ->
-                                       {ok, Role};
-                                  (Ref) when Ref == Credentials ->
-                                       {ok, CredentialsBody};
-                                  (Ref) when Ref == Document ->
-                                       {ok, DocumentBody}
-                               end),
+    meck:new(aws_credentials_httpc, [no_link, passthrough]),
+    meck:expect(aws_credentials_httpc, get, fun(<<?CREDENTIAL_URL>>) ->
+                                                {ok, 200, Role, []};
+                                               (<<?CREDENTIAL_URL, Rolef/binary>>) when Role == Rolef ->
+                                                {ok, 200, Credentials, []};
+                                               (<<?DOCUMENT_URL>>) ->
+                                                {ok, 200, Document, []}
+                                            end),
     [{access_key, AccessKeyID},
      {secret_key, SecretAccessKey},
      {expiry, Expiry},
      {token, Token},
      {region, Region}|Config];
 init_per_group(boot, Config) ->
-    meck:new(aws_metadata_client, [no_link, passthrough]),
-    meck:expect(aws_metadata_client, fetch, fun() -> error(mocked_bad) end),
+    meck:new(aws_credentials_ec2, [no_link, passthrough]),
+    meck:expect(aws_credentials_ec2, fetch, fun(_) -> error(mocked_bad) end),
     Config.
 
 end_per_group(mecked_metadata, Config) ->
-    meck:unload(hackney),
+    meck:unload(aws_credentials_httpc),
     Config;
 end_per_group(boot, Config) ->
-    meck:unload(aws_metadata_client),
+    meck:unload(aws_credentials_ec2),
     Config.
 
 init_per_testcase(fail_boot, Config) ->
@@ -89,8 +77,10 @@ init_per_testcase(fail_boot, Config) ->
 init_per_testcase(fail_noboot, Config) ->
     Config;
 init_per_testcase(_, Config) ->
-    application:load(aws_metadata),
-    {ok, Apps} = application:ensure_all_started(aws_metadata),
+  meck:new(aws_credentials_file, [no_link, passthrough]),
+  meck:expect(aws_credentials_file, fetch, 1, {error, mocked}),
+    application:load(aws_credentials),
+    {ok, Apps} = application:ensure_all_started(aws_credentials),
     [{apps, Apps}|Config].
 
 end_per_testcase(Testcase, Config)
@@ -103,24 +93,16 @@ end_per_testcase(_, Config) ->
                   lists:reverse(Apps)),
     Config.
 
-test_get_client(Config) ->
-    AccessKeyID = ?config(access_key, Config),
-    SecretAccessKey = ?config(secret_key, Config),
-    Region = ?config(region, Config),
-    Token = ?config(token, Config),
-    Client = aws_client:make_temporary_client(AccessKeyID, SecretAccessKey, Token, Region),
-    ?assertMatch(Client, aws_metadata:get_client()).
-
 fail_boot(_Config) ->
-    application:load(aws_metadata),
-    application:set_env(aws_metadata, fail_if_unavailable, false),
-    {ok, Apps} = application:ensure_all_started(aws_metadata),
+    application:load(aws_credentials),
+    application:set_env(aws_credentials, fail_if_unavailable, false),
+    {ok, Apps} = application:ensure_all_started(aws_credentials),
     _ = [application:stop(App) || App <- Apps],
-    application:set_env(aws_metadata, fail_if_unavailable, true),
+    application:set_env(aws_credentials, fail_if_unavailable, true),
     ok.
 
 fail_noboot(_Config) ->
-    application:load(aws_metadata),
-    application:set_env(aws_metadata, fail_if_unavailable, true),
-    ?assertMatch({error, {aws_metadata,_}},
-                 application:ensure_all_started(aws_metadata)).
+    application:load(aws_credentials),
+    application:set_env(aws_credentials, fail_if_unavailable, true),
+    ?assertMatch({error, {aws_credentials, _}},
+                 application:ensure_all_started(aws_credentials)).
