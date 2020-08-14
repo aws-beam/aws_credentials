@@ -1,5 +1,8 @@
 aws_credentials
 ===============
+
+[![Actions Status](https://github.com/aws-beam/aws_credentials/workflows/Build/badge.svg)](https://github.com/aws-beam/aws_credentials/actions)
+
 This is a library to retrieve AWS credentials from a variety of possible
 sources in the following default order:
 
@@ -29,7 +32,7 @@ the module name to the default list of modules to attempt.
 
 ### Provider return values ###
 Providers are expected to return either `{error, Reason :: term()}` or
-`{ok, Credentials :: map(), Expiration :: infinity | binary() | pos_integer()}`. 
+`{ok, Credentials :: map(), Expiration :: infinity | binary() | pos_integer()}`.
 The Credentials map typically looks like the following:
 
 ```erlang
@@ -41,12 +44,12 @@ The Credentials map typically looks like the following:
   region => Region :: binary()
 }
 ```
-Not all providers will populate all map keys.  
+Not all providers will populate all map keys.
 
-The expiration time from a provider can either be expressed as: 
-* the atom `infinity`, 
-* epoch seconds as an integer, or, 
-* as an ISO8601 time/date string (e.g., "2019-03-14T23:45:56Z"). 
+The expiration time from a provider can either be expressed as:
+* the atom `infinity`,
+* epoch seconds as an integer, or,
+* as an ISO8601 time/date string (e.g., "2019-03-14T23:45:56Z").
 
 If you specify the expiration as `infinity` the library will *never* attempt to
 refresh credentials.
