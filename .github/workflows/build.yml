@@ -43,6 +43,8 @@ jobs:
       with:
         name: ct-logs
         path: _build/test/logs
+    - name: Run Checks
+      run: rebar3 do dialyzer, xref
     - name: Create Cover Reports
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -53,4 +55,4 @@ jobs:
       uses: actions/upload-artifact@v1
       with:
         name: edoc
-        path: doc
+        path: edoc

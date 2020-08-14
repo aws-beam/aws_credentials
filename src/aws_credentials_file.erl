@@ -22,7 +22,7 @@
 
 fetch(Options) ->
     case does_credentials_file_exist(Options) of
-        {false, Error} ->
+        {error, Error} ->
             {error, {credentials_file_does_not_exist, Error}};
         Path ->
             parse_file(Path, Options)

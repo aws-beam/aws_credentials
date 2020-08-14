@@ -65,5 +65,4 @@ erlang_get_env(Var) when is_list(Var) ->
         {ok, Value} -> Value
     end.
 
-make_env_var(Var) when is_list(Var) -> list_to_atom(Var);
-make_env_var(Other) -> {error, {bad_string, Other}}.
+make_env_var(Var) when is_list(Var) -> list_to_atom(Var).
