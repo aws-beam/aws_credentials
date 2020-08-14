@@ -29,12 +29,18 @@
 
 -export([fetch/0, fetch/1]).
 
--callback fetch ( Options :: proplists:proplist() ) -> {ok, Credentials :: map(),
-                                                        Expiration :: binary() | pos_integer() | infinity}
-                                                       | {error, Reason :: term()}.
+-type options() :: proplists:proplist().
+-type credentials() :: map().
+-type expiration() :: binary() | pos_integer() | infinity.
+-export_type([ options/0, credentials/0, expiration/0]).
 
+-callback fetch(options()) ->
+  {ok, credentials(), expiration()} | {error, any()}.
 
--define(DEFAULT_PROVIDERS, [aws_credentials_env, aws_credentials_file, aws_credentials_ecs, aws_credentials_ec2]).
+-define(DEFAULT_PROVIDERS, [aws_credentials_env,
+                            aws_credentials_file,
+                            aws_credentials_ecs,
+                            aws_credentials_ec2]).
 
 fetch() ->
     fetch([]).
@@ -57,4 +63,3 @@ get_env(Key, Default) ->
         undefined -> Default;
         {ok, Value} -> Value
     end.
-

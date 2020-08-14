@@ -32,12 +32,12 @@ get(URL) ->
 %% successfully get the desired data. That is, it will return an
 %% ok tuple with a status code of 500 or 404 or some other HTTP error
 %% code and no data.
--spec get( URL :: binary(),
-           Tries :: pos_integer() ) -> {ok, { Status :: non_neg_integer(),
-                                              Body :: binary(),
-                                              Headers :: map() } }
+-spec get( URL :: string(),
+           Tries :: pos_integer() ) -> {ok, Status :: non_neg_integer(),
+                                        Body :: binary(),
+                                        Headers :: map() }
                                        | {error, Reasons :: [term()]}.
-get(URL, Tries) when is_binary(URL)
+get(URL, Tries) when is_list(URL)
                        andalso is_integer(Tries)
                        andalso Tries > 0 ->
   get(URL, Tries, Tries, []).

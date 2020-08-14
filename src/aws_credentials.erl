@@ -42,7 +42,7 @@
         ,make_map/5
         ]).
 
--record(state, {credentials = undefined :: map() | undefined}).
+-record(state, {credentials = undefined :: map() | undefined | information_redacted}).
 
 %%====================================================================
 %% API
