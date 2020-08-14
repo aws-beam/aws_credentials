@@ -19,7 +19,7 @@ fetch(_Options) ->
 
 fetch_role() ->
     {ok, 200, Body, _Headers} = aws_credentials_httpc:get(?CREDENTIAL_URL),
-    Body.
+    {ok, Body}.
 
 fetch_metadata(Role) ->
     {ok, 200, Body, _Headers} = aws_credentials_httpc:get(iolist_to_binary([?CREDENTIAL_URL, Role])),
