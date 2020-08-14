@@ -11,8 +11,8 @@
 %%
 %% Environment parameters:
 %% <ul>
-%%   <li><<"credentials_path">> - this is the path to the CLI configuration file. By default this is `~/.aws/credentials'</li>
-%%   <li><<"profile">> - this is the desired profile to use in the credentials file. By default this is <<"default">></li>
+%%   <li> &lt;&lt;"credentials_path"&gt;&gt; - this is the path to the CLI configuration file. By default this is `~/.aws/credentials'</li>
+%%   <li> &lt;&lt;"profile"&gt;&gt; - this is the desired profile to use in the credentials file. By default this is &lt;&lt;"default"&gt;&gt;</li>
 %% </ul>
 %% @end
 -module(aws_credentials_file).
