@@ -1,7 +1,7 @@
-%% @doc This is the behaviour definition for a credential provider module
-%% and it iterates over a list of providers. You may set the `credential_providers`
-%% Erlang environment variable if you want to restrict checking only a certain
-%% subset of the default list.
+%% @doc This is the behaviour definition for a credential provider
+%% module and it iterates over a list of providers. You may set the
+%% `credential_providers` Erlang environment variable if you want to
+%% restrict checking only a certain subset of the default list.
 %%
 %% Default order of checking for credentials is:
 %% <ol>

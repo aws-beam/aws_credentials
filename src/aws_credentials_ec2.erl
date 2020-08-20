@@ -30,7 +30,7 @@ fetch_role() ->
 fetch_metadata(Role) ->
     Url = lists:flatten(io_lib:format("~p/~p", [?CREDENTIAL_URL, Role])),
     {ok, 200, Body, _Headers} = aws_credentials_httpc:get(Url),
-    Map = jsone:decode(Body),
+    Map = jsx:decode(Body),
     {ok, maps:get(<<"AccessKeyId">>, Map),
      maps:get(<<"SecretAccessKey">>, Map),
      maps:get(<<"Expiration">>, Map),
@@ -38,5 +38,5 @@ fetch_metadata(Role) ->
 
 fetch_document() ->
     {ok, 200, Body, _Headers} = aws_credentials_httpc:get(?DOCUMENT_URL),
-    Map = jsone:decode(Body),
+    Map = jsx:decode(Body),
     {ok, maps:get(<<"region">>, Map)}.
