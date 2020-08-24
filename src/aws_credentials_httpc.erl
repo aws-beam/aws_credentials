@@ -45,7 +45,7 @@ get(URL, Tries) when is_list(URL)
 get(_URL, _Tries, 0, Errs) -> {error, lists:reverse(Errs)};
 get(URL, Tries, Remaining, Errs) ->
     case make_request(URL) of
-      {ok, {{_HttpVer, Status, _Reason}, Body, Headers}} ->
+      {ok, {{_HttpVer, Status, _Reason}, Headers, Body}} ->
         {ok, Status, Body, Headers};
 
       Error ->
