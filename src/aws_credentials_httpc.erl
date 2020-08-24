@@ -46,7 +46,7 @@ get(_URL, _Tries, 0, Errs) -> {error, lists:reverse(Errs)};
 get(URL, Tries, Remaining, Errs) ->
     case make_request(URL) of
       {ok, {{_HttpVer, Status, _Reason}, Body, Headers}} ->
-        {ok, Status, Body, maps:from_list(Headers)};
+        {ok, Status, Body, Headers};
 
       Error ->
         NewRemaining = Remaining - 1,
