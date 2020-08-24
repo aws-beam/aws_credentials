@@ -65,7 +65,7 @@ Include the library in your rebar.config file, and then...
 
 ```erlang
 {ok, _} = application:ensure_all_started(aws_credentials),
-{ok, Credentials} = aws_credentials:get_credentials(),
+Credentials = aws_credentials:get_credentials(),
 ```
 
 By default if the library is unable to obtain credentials, it will fail to
@@ -85,7 +85,7 @@ can change the list of modules in your erlang environment variables as in
 this example:
 
 ```erlang
-  {aws_credentials, [{provider_list, [aws_credentials_ecs]}]
+  {aws_credentials, [{credential_provider, [aws_credentials_ecs]}]
   },
 ```
 
