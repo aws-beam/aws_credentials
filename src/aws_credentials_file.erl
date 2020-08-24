@@ -44,7 +44,7 @@ maybe_add_home(Other) -> Other.
 
 check_path_exists(Path, _Options) ->
         case filelib:is_regular(Path) of
-            false -> false;
+            false -> {error, file_not_found};
             true -> Path
         end.
 
