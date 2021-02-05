@@ -10,13 +10,14 @@
 %% @end
 
 -module(aws_credentials_httpc).
--export([start/0, get/1, get/2]).
+-export([start/0, request/2, request/3, request/4]).
 
 -define(PROFILE, aws_credentials).
 -define(TIMEOUT, 10000). % 10 sec
 -define(CONNECT_TIMEOUT, 3000). % 3 sec
 -define(DEFAULT_TRIES, 3).
 -define(DELAY, 100). % 100 milliseconds
+-define(DEFAULT_HEADERS, []).
 
 -type httpc_result() :: {status_line(), [header()], body()}.
 -type status_line() :: {http_version(), status_code(), reason_phrase()}.
@@ -26,6 +27,7 @@
 -type status_code() :: non_neg_integer().
 -type reason_phrase() :: string().
 -type url() :: string().
+-type method() :: atom().
 
 -spec start() -> ok.
 
@@ -34,31 +36,37 @@
 start() ->
     inets:start(httpc, [{profile, ?PROFILE}]).
 
-%% @doc Attempt to get a URL with the 3 retries. 3 is the default.
--spec get(url()) -> {'error', any()} | {'ok', status_code(), body(), [header()]}.
-get(URL) ->
-  get(URL, ?DEFAULT_TRIES).
+%% @doc Attempt to request a URL with the 3 retries. 3 is the default.
+-spec request(method(), url()) -> {'error', any()} | {'ok', status_code(), body(), [header()]}.
+request(Method, URL) ->
+  request(Method, URL, ?DEFAULT_HEADERS, ?DEFAULT_TRIES).
 
-%% @doc Attempt to get a URL with a specified positive number of retries.
+-spec request(method(), url(), [header()]) -> {'error', any()} | {'ok', status_code(), body(), [header()]}.
+request(Method, URL, RequestHeaders) ->
+  request(Method, URL, RequestHeaders, ?DEFAULT_TRIES).
+
+
+%% @doc Attempt to request a URL with a specified positive number of retries.
 %% (Minimum of 1.)
 %%
 %% Note this function may return `{ok, Results}' even if it was unable to
 %% successfully get the desired data. That is, it will return an
 %% ok tuple with a status code of 500 or 404 or some other HTTP error
 %% code and no data.
--spec get(url(), pos_integer() ) -> {ok, status_code(), body(), [header()]} | {error, any()}.
-get(URL, Tries) when is_list(URL)
+-spec request(method(), url(), [header()], pos_integer() ) -> {ok, status_code(), body(), [header()]} | {error, any()}.
+request(Method, URL, RequestHeaders, Tries) when is_atom(Method)
+                     andalso is_list(URL)
                      andalso is_integer(Tries)
                      andalso Tries > 0 ->
-  get(URL, Tries, Tries, []).
+  request(Method, URL, RequestHeaders, Tries, Tries, []).
 
--spec get(url(), pos_integer(), pos_integer(), any()) ->
+-spec request(method(), url(), [header()], pos_integer(), pos_integer(), any()) ->
         {ok, status_code(), body(), [header()]} | {error, any()}.
-get(_URL, _Tries, 0, Errs) -> {error, lists:reverse(Errs)};
-get(URL, Tries, Remaining, Errs) ->
-    case make_request(URL) of
-      {ok, {{_HttpVer, Status, _Reason}, Headers, Body}} ->
-        {ok, Status, Body, Headers};
+request(_Method, _URL, _RequestHeaders, _Tries, 0, Errs) -> {error, lists:reverse(Errs)};
+request(Method, URL, RequestHeaders, Tries, Remaining, Errs) ->
+    case make_request(Method, URL, RequestHeaders) of
+      {ok, {{_HttpVer, Status, _Reason}, ResponseHeaders, Body}} ->
+        {ok, Status, Body, ResponseHeaders};
 
       Error ->
         NewRemaining = Remaining - 1,
@@ -66,12 +74,12 @@ get(URL, Tries, Remaining, Errs) ->
                    "~p of ~p) ~p: ~p.",
                    [NewRemaining, Tries, URL, Error]),
         timer:sleep((Tries - NewRemaining) * ?DELAY),
-        get(URL, Tries, NewRemaining, [ Error | Errs ])
+        request(Method, URL, RequestHeaders, Tries, NewRemaining, [ Error | Errs ])
     end.
 
--spec make_request(string()) -> {ok, httpc_result()} | {error, any()}.
-make_request(URL) ->
-    httpc:request(get, {URL, []},
+-spec make_request(method(), url(), [header()]) -> {ok, httpc_result()} | {error, any()}.
+make_request(Method, URL, RequestHeaders) ->
+    httpc:request(Method, {URL, RequestHeaders},
                   [{timeout, ?TIMEOUT},
                    {connect_timeout, ?CONNECT_TIMEOUT}], % HTTP options
                   [{body_format, binary}], % options
