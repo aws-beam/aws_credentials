@@ -17,7 +17,7 @@ Dependencies
 This library depends on the following libraries:
 
 * [iso8601][2]
-* [jsone][6]
+* [jsx][6]
 * [eini][3]
 
 Implementation
@@ -105,4 +105,4 @@ Copyright (C) 2018 by Mark R. Allen.
 [3]: https://github.com/aws-beam/eini
 [4]: src/aws_credentials_provider.erl
 [5]: https://github.com/aws-beam/aws-erlang-metadata
-[6]: https://github.com/sile/jsone
+[6]: https://github.com/talentdeficit/jsx
