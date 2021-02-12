@@ -12,7 +12,7 @@
 %% We make new credentials available at least five minutes prior to the
 %% expiration of the old credentials.
 -define(ALERT_BEFORE_EXPIRY, 300). % 5 minutes
--define(RETRY_DELAY, 5000). % 5 seconds
+-define(RETRY_DELAY, 5). % 5 seconds
 -define(GREGORIAN_TO_EPOCH_SECONDS, 62167219200).
 
 -ifdef(OTP_RELEASE).

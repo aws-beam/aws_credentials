@@ -5,7 +5,7 @@
 %%
 %% On errors, there will be a number of attempts with a delay equal to 100
 %% milliseconds times the number of tries minus tries left. (So the first
-%% delay would be 100 millseconds. The second delay would be 200 milliseconds,
+%% delay would be 100 milliseconds. The second delay would be 200 milliseconds,
 %% and so on...)
 %% @end
 
@@ -16,7 +16,7 @@
 -define(TIMEOUT, 10000). % 10 sec
 -define(CONNECT_TIMEOUT, 3000). % 3 sec
 -define(DEFAULT_TRIES, 3).
--define(DELAY, 100). % 100 microseconds
+-define(DELAY, 100). % 100 milliseconds
 
 start() ->
     inets:start(httpc, [{profile, ?PROFILE}]).
