@@ -23,11 +23,13 @@
 all() ->
   [ {group, file}
   , {group, ec2}
+  , {group, env}
   ].
 
 groups() ->
   [ {file, [], all_testcases()}
   , {ec2, [], all_testcases()}
+  , {env, [], all_testcases()}
   ].
 
 all_testcases() ->
@@ -44,17 +46,17 @@ end_per_suite(Config) ->
   Config.
 
 init_per_group(GroupName, Config) ->
-  Mocks = setup_provider_mocks(GroupName),
+  Context = setup_provider(GroupName),
   Provider = provider(GroupName),
   ProviderOpts = provider_opts(GroupName, Config),
   application:set_env(aws_credentials, credential_providers,
                       [{Provider, ProviderOpts}]),
   {ok, Started} = application:ensure_all_started(aws_credentials),
-  [{started, Started}, {mocks, Mocks}|Config].
+  [{started, Started}, {context, Context}|Config].
 
-end_per_group(_GroupName, Config) ->
+end_per_group(GroupName, Config) ->
   [application:stop(App) || App <- ?config(started, Config)],
-  [teardown_provider_mock(Mock) || Mock <- ?config(mocks, Config)],
+  teardown_provider(GroupName, ?config(context, Config)),
   Config.
 
 init_per_testcase(TestCase, Config) ->
@@ -90,21 +92,42 @@ provider_opts(file, Config) ->
   CredentialsPath = filename:join([DataDir, "credentials"]),
   [{<<"credential_path">>, CredentialsPath}];
 provider_opts(ec2, _Config) ->
+  [];
+provider_opts(env, _Config) ->
   [].
 
 group_name(Config) ->
   GroupProperties = ?config(tc_group_properties, Config),
   proplists:get_value(name, GroupProperties).
 
-setup_provider_mocks(ec2) ->
+setup_provider(ec2) ->
   meck:new(httpc, [no_link, passthrough]),
   meck:expect(httpc, request, fun mock_httpc_request/5),
-  [httpc];
-setup_provider_mocks(_GroupName) ->
-  [].
+  #{mocks => [httpc]};
+setup_provider(env) ->
+  OldAccessKeyId = os:getenv("AWS_ACCESS_KEY_ID"),
+  OldSecretAccessKey = os:getenv("AWS_SECRET_ACCESS_KEY"),
+  os:putenv("AWS_ACCESS_KEY_ID", binary_to_list(?DUMMY_ACCESS_KEY)),
+  os:putenv("AWS_SECRET_ACCESS_KEY", binary_to_list(?DUMMY_SECRET_ACCESS_KEY)),
+  #{ old_access_key_id => OldAccessKeyId
+   , old_secret_access_key => OldSecretAccessKey
+   };
+setup_provider(_GroupName) ->
+  #{}.
 
-teardown_provider_mock(Mock) ->
-  meck:unload(Mock).
+teardown_provider(ec2, Context) ->
+  #{mocks := Mocks} = Context,
+  [meck:unload(Mock) || Mock <- Mocks],
+  ok;
+teardown_provider(env, Context) ->
+  #{ old_access_key_id := OldAccessKeyId
+   , old_secret_access_key := OldSecretAccessKey
+   } = Context,
+  maybe_put_env("AWS_ACCESS_KEY_ID", OldAccessKeyId),
+  maybe_put_env("AWS_SECRET_ACCESS_KEY", OldSecretAccessKey),
+  ok;
+teardown_provider(_GroupName, _Context) ->
+  ok.
 
 mock_httpc_request(Method, Request, HTTPOptions, Options, Profile) ->
   case Request of
@@ -134,3 +157,8 @@ body('dummy-role') ->
               });
 body('document') ->
   jsx:encode(#{ 'region' => unused }).
+
+maybe_put_env(_Key, false) ->
+  ok;
+maybe_put_env(Key, Value) ->
+  os:putenv(Key, Value).
