@@ -28,7 +28,7 @@ fetch_role() ->
     {ok, Body}.
 
 fetch_metadata(Role) ->
-    Url = lists:flatten(io_lib:format("~p/~p", [?CREDENTIAL_URL, Role])),
+    Url = lists:flatten(io_lib:format("~s~s", [?CREDENTIAL_URL, Role])),
     {ok, 200, Body, _Headers} = aws_credentials_httpc:get(Url),
     Map = jsx:decode(Body),
     {ok, maps:get(<<"AccessKeyId">>, Map),
