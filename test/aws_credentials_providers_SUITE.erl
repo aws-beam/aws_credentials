@@ -22,10 +22,12 @@
 
 all() ->
   [ {group, file}
+  , {group, ec2}
   ].
 
 groups() ->
   [ {file, [], all_testcases()}
+  , {ec2, [], all_testcases()}
   ].
 
 all_testcases() ->
@@ -42,16 +44,17 @@ end_per_suite(Config) ->
   Config.
 
 init_per_group(GroupName, Config) ->
+  Mocks = setup_provider_mocks(GroupName),
   Provider = provider(GroupName),
   ProviderOpts = provider_opts(GroupName, Config),
   application:set_env(aws_credentials, credential_providers,
                       [{Provider, ProviderOpts}]),
   {ok, Started} = application:ensure_all_started(aws_credentials),
-  [{started, Started}|Config].
+  [{started, Started}, {mocks, Mocks}|Config].
 
 end_per_group(_GroupName, Config) ->
-  Started = ?config(started, Config),
-  [application:stop(App) || App <- Started],
+  [application:stop(App) || App <- ?config(started, Config)],
+  [teardown_provider_mock(Mock) || Mock <- ?config(mocks, Config)],
   Config.
 
 init_per_testcase(TestCase, Config) ->
@@ -69,12 +72,14 @@ get_credentials({fin, Config}) ->
   Config;
 get_credentials(Config) ->
   GroupName = group_name(Config),
-  Credentials = aws_credentials:get_credentials(),
-  ExpectedCredentials = #{ access_key_id => ?DUMMY_ACCESS_KEY
-                         , credential_provider => provider(GroupName)
-                         , secret_access_key => ?DUMMY_SECRET_ACCESS_KEY
-                         },
-  ?assertEqual(ExpectedCredentials, Credentials).
+  Provider = provider(GroupName),
+  #{ access_key_id := AccessKeyId
+   , credential_provider := CredentialProvider
+   , secret_access_key := SecretAccessKey
+   } = aws_credentials:get_credentials(),
+  ?assertEqual(?DUMMY_ACCESS_KEY, AccessKeyId),
+  ?assertEqual(Provider, CredentialProvider),
+  ?assertEqual(?DUMMY_SECRET_ACCESS_KEY, SecretAccessKey).
 
 %% Helpers ====================================================================
 provider(GroupName) ->
@@ -83,8 +88,49 @@ provider(GroupName) ->
 provider_opts(file, Config) ->
   DataDir = ?config(data_dir, Config),
   CredentialsPath = filename:join([DataDir, "credentials"]),
-  [{<<"credential_path">>, CredentialsPath}].
+  [{<<"credential_path">>, CredentialsPath}];
+provider_opts(ec2, _Config) ->
+  [].
 
 group_name(Config) ->
   GroupProperties = ?config(tc_group_properties, Config),
   proplists:get_value(name, GroupProperties).
+
+setup_provider_mocks(ec2) ->
+  meck:new(httpc, [no_link, passthrough]),
+  meck:expect(httpc, request, fun mock_httpc_request/5),
+  [httpc];
+setup_provider_mocks(_GroupName) ->
+  [].
+
+teardown_provider_mock(Mock) ->
+  meck:unload(Mock).
+
+mock_httpc_request(Method, Request, HTTPOptions, Options, Profile) ->
+  case Request of
+    {"http://169.254.169.254/latest/meta-data/iam/security-credentials/", []} ->
+      {ok, response('security-credentials')};
+    {"http://169.254.169.254/latest/meta-data/iam/security-credentials/dummy-role", []} ->
+      {ok, response('dummy-role')};
+    {"http://169.254.169.254/latest/dynamic/instance-identity/document", []} ->
+      {ok, response('document')};
+    _ ->
+      meck:passthrough([Method, Request, HTTPOptions, Options, Profile])
+  end.
+
+response(BodyTag) ->
+  StatusLine = {unused, 200, unused},
+  Headers = [],
+  Body = body(BodyTag),
+  {StatusLine, Headers, Body}.
+
+body('security-credentials') ->
+  <<"dummy-role">>;
+body('dummy-role') ->
+  jsx:encode(#{ 'AccessKeyId' => ?DUMMY_ACCESS_KEY
+              , 'SecretAccessKey' => ?DUMMY_SECRET_ACCESS_KEY
+              , 'Expiration' => <<"2025-09-25T23:43:56Z">>
+              , 'Token' => unused
+              });
+body('document') ->
+  jsx:encode(#{ 'region' => unused }).
