@@ -56,9 +56,9 @@ init_per_group(GroupName, Config) ->
   {ok, Started} = application:ensure_all_started(aws_credentials),
   [{started, Started}, {context, Context}|Config].
 
-end_per_group(GroupName, Config) ->
+end_per_group(_GroupName, Config) ->
   [application:stop(App) || App <- ?config(started, Config)],
-  teardown_provider(GroupName, ?config(context, Config)),
+  teardown_provider(?config(context, Config)),
   Config.
 
 init_per_testcase(TestCase, Config) ->
@@ -107,14 +107,18 @@ group_name(Config) ->
 setup_provider(ec2) ->
   meck:new(httpc, [no_link, passthrough]),
   meck:expect(httpc, request, fun mock_httpc_request_ec2/5),
-  #{ mocks => [httpc] };
+  #{ mocks => [httpc]
+   , env => []
+   };
 setup_provider(env) ->
   OldAccessKeyId = os:getenv("AWS_ACCESS_KEY_ID"),
   OldSecretAccessKey = os:getenv("AWS_SECRET_ACCESS_KEY"),
   os:putenv("AWS_ACCESS_KEY_ID", binary_to_list(?DUMMY_ACCESS_KEY)),
   os:putenv("AWS_SECRET_ACCESS_KEY", binary_to_list(?DUMMY_SECRET_ACCESS_KEY)),
-  #{ old_access_key_id => OldAccessKeyId
-   , old_secret_access_key => OldSecretAccessKey
+  #{ mocks => []
+   , env => [ {"AWS_ACCESS_KEY_ID", OldAccessKeyId}
+            , {"AWS_SECRET_ACCESS_KEY", OldSecretAccessKey}
+            ]
    };
 setup_provider(ecs) ->
   OldUri = os:getenv("AWS_CONTAINER_CREDENTIALS_RELATIVE_URI"),
@@ -122,28 +126,17 @@ setup_provider(ecs) ->
   meck:new(httpc, [no_link, passthrough]),
   meck:expect(httpc, request, fun mock_httpc_request_ecs/5),
   #{ mocks => [httpc]
-   , old_uri => OldUri
+   , env => [{"AWS_CONTAINER_CREDENTIALS_RELATIVE_URI", OldUri}]
    };
 setup_provider(_GroupName) ->
-  #{}.
+  #{ mocks => []
+   , env => []
+   }.
 
-teardown_provider(ec2, Context) ->
-  #{mocks := Mocks} = Context,
+teardown_provider(Context) ->
+  #{mocks := Mocks, env := Env} = Context,
   [meck:unload(Mock) || Mock <- Mocks],
-  ok;
-teardown_provider(env, Context) ->
-  #{ old_access_key_id := OldAccessKeyId
-   , old_secret_access_key := OldSecretAccessKey
-   } = Context,
-  maybe_put_env("AWS_ACCESS_KEY_ID", OldAccessKeyId),
-  maybe_put_env("AWS_SECRET_ACCESS_KEY", OldSecretAccessKey),
-  ok;
-teardown_provider(ecs, Context) ->
-  #{ mocks := Mocks
-   , old_uri := OldUri } = Context,
-  maybe_put_env("AWS_CONTAINER_CREDENTIALS_RELATIVE_URI", OldUri),
-  [meck:unload(Mock) || Mock <- Mocks];
-teardown_provider(_GroupName, _Context) ->
+  [maybe_put_env(Key, Value) || {Key, Value} <- Env],
   ok.
 
 mock_httpc_request_ec2(Method, Request, HTTPOptions, Options, Profile) ->
