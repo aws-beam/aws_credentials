@@ -85,7 +85,7 @@ can change the list of modules in your erlang environment variables as in
 this example:
 
 ```erlang
-  {aws_credentials, [{credential_provider, [aws_credentials_ecs]}]
+  {aws_credentials, [{credential_providers, [aws_credentials_ecs]}]
   },
 ```
 
