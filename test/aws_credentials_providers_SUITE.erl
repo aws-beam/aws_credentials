@@ -24,12 +24,14 @@ all() ->
   [ {group, file}
   , {group, ec2}
   , {group, env}
+  , {group, ecs}
   ].
 
 groups() ->
   [ {file, [], all_testcases()}
   , {ec2, [], all_testcases()}
   , {env, [], all_testcases()}
+  , {ecs, [], all_testcases()}
   ].
 
 all_testcases() ->
@@ -94,6 +96,8 @@ provider_opts(file, Config) ->
 provider_opts(ec2, _Config) ->
   [];
 provider_opts(env, _Config) ->
+  [];
+provider_opts(ecs, _Config) ->
   [].
 
 group_name(Config) ->
@@ -102,8 +106,8 @@ group_name(Config) ->
 
 setup_provider(ec2) ->
   meck:new(httpc, [no_link, passthrough]),
-  meck:expect(httpc, request, fun mock_httpc_request/5),
-  #{mocks => [httpc]};
+  meck:expect(httpc, request, fun mock_httpc_request_ec2/5),
+  #{ mocks => [httpc] };
 setup_provider(env) ->
   OldAccessKeyId = os:getenv("AWS_ACCESS_KEY_ID"),
   OldSecretAccessKey = os:getenv("AWS_SECRET_ACCESS_KEY"),
@@ -111,6 +115,14 @@ setup_provider(env) ->
   os:putenv("AWS_SECRET_ACCESS_KEY", binary_to_list(?DUMMY_SECRET_ACCESS_KEY)),
   #{ old_access_key_id => OldAccessKeyId
    , old_secret_access_key => OldSecretAccessKey
+   };
+setup_provider(ecs) ->
+  OldUri = os:getenv("AWS_CONTAINER_CREDENTIALS_RELATIVE_URI"),
+  os:putenv("AWS_CONTAINER_CREDENTIALS_RELATIVE_URI", "/dummy-uri"),
+  meck:new(httpc, [no_link, passthrough]),
+  meck:expect(httpc, request, fun mock_httpc_request_ecs/5),
+  #{ mocks => [httpc]
+   , old_uri => OldUri
    };
 setup_provider(_GroupName) ->
   #{}.
@@ -126,10 +138,15 @@ teardown_provider(env, Context) ->
   maybe_put_env("AWS_ACCESS_KEY_ID", OldAccessKeyId),
   maybe_put_env("AWS_SECRET_ACCESS_KEY", OldSecretAccessKey),
   ok;
+teardown_provider(ecs, Context) ->
+  #{ mocks := Mocks
+   , old_uri := OldUri } = Context,
+  maybe_put_env("AWS_CONTAINER_CREDENTIALS_RELATIVE_URI", OldUri),
+  [meck:unload(Mock) || Mock <- Mocks];
 teardown_provider(_GroupName, _Context) ->
   ok.
 
-mock_httpc_request(Method, Request, HTTPOptions, Options, Profile) ->
+mock_httpc_request_ec2(Method, Request, HTTPOptions, Options, Profile) ->
   case Request of
     {"http://169.254.169.254/latest/meta-data/iam/security-credentials/", []} ->
       {ok, response('security-credentials')};
@@ -137,6 +154,14 @@ mock_httpc_request(Method, Request, HTTPOptions, Options, Profile) ->
       {ok, response('dummy-role')};
     {"http://169.254.169.254/latest/dynamic/instance-identity/document", []} ->
       {ok, response('document')};
+    _ ->
+      meck:passthrough([Method, Request, HTTPOptions, Options, Profile])
+  end.
+
+mock_httpc_request_ecs(Method, Request, HTTPOptions, Options, Profile) ->
+  case Request of
+    {"http://169.254.170.2/dummy-uri", []} ->
+      {ok, response('dummy-uri')};
     _ ->
       meck:passthrough([Method, Request, HTTPOptions, Options, Profile])
   end.
@@ -156,7 +181,13 @@ body('dummy-role') ->
               , 'Token' => unused
               });
 body('document') ->
-  jsx:encode(#{ 'region' => unused }).
+  jsx:encode(#{ 'region' => unused });
+body('dummy-uri') ->
+  jsx:encode(#{ 'AccessKeyId' => ?DUMMY_ACCESS_KEY
+              , 'SecretAccessKey' => ?DUMMY_SECRET_ACCESS_KEY
+              , 'Expiration' => <<"2025-09-25T23:43:56Z">>
+              , 'Token' => unused
+              }).
 
 maybe_put_env(_Key, false) ->
   ok;
