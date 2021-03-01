@@ -50,10 +50,12 @@ fetch(Options) ->
     evaluate_providers(Providers, Options).
 
 evaluate_providers([], _Options) -> {error, no_credentials};
-evaluate_providers([ H | T ], Options) ->
-    case H:fetch(Options) of
+evaluate_providers([Provider|Providers], Options) when is_atom(Provider) ->
+  evaluate_providers([{Provider, []}|Providers], Options);
+evaluate_providers([ {Provider, ProviderOpts} | T ], Options) ->
+    case Provider:fetch(ProviderOpts ++ Options) of
         {error, _} = Error ->
-            error_logger:error_msg("Provider ~p reports ~p", [H, Error]),
+            error_logger:error_msg("Provider ~p reports ~p", [Provider, Error]),
             evaluate_providers(T, Options);
         Credentials -> Credentials
     end.
