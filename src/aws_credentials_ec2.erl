@@ -27,6 +27,7 @@ fetch_role() ->
     {ok, 200, Body, _Headers} = aws_credentials_httpc:get(?CREDENTIAL_URL),
     {ok, Body}.
 
+-spec fetch_metadata(binary()) -> {'ok', binary(), binary(), binary(), binary()}.
 fetch_metadata(Role) ->
     Url = lists:flatten(io_lib:format("~s~s", [?CREDENTIAL_URL, Role])),
     {ok, 200, Body, _Headers} = aws_credentials_httpc:get(Url),
@@ -36,6 +37,7 @@ fetch_metadata(Role) ->
      maps:get(<<"Expiration">>, Map),
      maps:get(<<"Token">>, Map)}.
 
+-spec fetch_document() -> {ok, binary()}.
 fetch_document() ->
     {ok, 200, Body, _Headers} = aws_credentials_httpc:get(?DOCUMENT_URL),
     Map = jsx:decode(Body),

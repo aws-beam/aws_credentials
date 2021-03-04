@@ -30,25 +30,32 @@
 -export([fetch/0, fetch/1]).
 
 -type options() :: proplists:proplist().
--type credentials() :: map().
 -type expiration() :: binary() | pos_integer() | infinity.
--export_type([ options/0, credentials/0, expiration/0]).
+-type provider() :: aws_credentials_env
+                  | aws_credentials_file
+                  | aws_credentials_ecs
+                  | aws_credentials_ec2.
+-export_type([ options/0, expiration/0 ]).
 
 -callback fetch(options()) ->
-  {ok, credentials(), expiration()} | {error, any()}.
+  {ok, aws_credentials:credentials(), expiration()} | {error, any()}.
 
 -define(DEFAULT_PROVIDERS, [aws_credentials_env,
                             aws_credentials_file,
                             aws_credentials_ecs,
                             aws_credentials_ec2]).
 
+-spec fetch() -> {'error', 'no_credentials'} | aws_credentials:credentials().
 fetch() ->
     fetch([]).
 
+-spec fetch([]) -> {'error', 'no_credentials'} | aws_credentials:credentials().
 fetch(Options) ->
     Providers = get_env(credential_providers, ?DEFAULT_PROVIDERS),
     evaluate_providers(Providers, Options).
 
+-spec evaluate_providers([provider() | {provider(), options()}], []) ->
+        {'error', no_credentials} | aws_credentials:credentials().
 evaluate_providers([], _Options) -> {error, no_credentials};
 evaluate_providers([Provider|Providers], Options) when is_atom(Provider) ->
   evaluate_providers([{Provider, []}|Providers], Options);
@@ -60,6 +67,7 @@ evaluate_providers([ {Provider, ProviderOpts} | T ], Options) ->
         Credentials -> Credentials
     end.
 
+-spec get_env(atom(), [provider()]) -> any().
 get_env(Key, Default) ->
     case application:get_env(aws_credentials, Key) of
         undefined -> Default;
