@@ -48,13 +48,14 @@ init_per_group(mecked_metadata, Config) ->
       \"devpayProductCodes\" : null
     }">>,
     meck:new(aws_credentials_httpc, [no_link, passthrough]),
-    meck:expect(aws_credentials_httpc, get, fun(<<?CREDENTIAL_URL>>) ->
-                                                {ok, 200, Role, []};
-                                               (<<?CREDENTIAL_URL, Rolef/binary>>) when Role == Rolef ->
-                                                {ok, 200, Credentials, []};
-                                               (<<?DOCUMENT_URL>>) ->
-                                                {ok, 200, Document, []}
-                                            end),
+    meck:expect(aws_credentials_httpc, get,
+                fun(<<?CREDENTIAL_URL>>) ->
+                    {ok, 200, Role, []};
+                   (<<?CREDENTIAL_URL, Rolef/binary>>) when Role == Rolef ->
+                    {ok, 200, Credentials, []};
+                   (<<?DOCUMENT_URL>>) ->
+                    {ok, 200, Document, []}
+                end),
     [{access_key, AccessKeyID},
      {secret_key, SecretAccessKey},
      {expiry, Expiry},
