@@ -116,13 +116,20 @@ format_status(_, [_PDict, State]) ->
 
 fetch_credentials() ->
     ShouldCatch = not application:get_env(aws_credentials, fail_if_unavailable, true),
+    ShouldDisplayST = application:get_env(aws_credentials, log_full_stacktrace_on_error, true),
     try
         {ok, Client, ExpirationTime} = aws_credentials_provider:fetch(),
         setup_update_callback(ExpirationTime),
         {ok, Client}
     ?CATCH
+            MaybeST =
+                case ShouldDisplayST of
+                    true -> ST;
+                    false -> "stacktrace omitted"
+                end,
+
             error_logger:info_msg("aws_credentials ignoring exception ~p:~p (~p)~n",
-                                  [E,R,ST]),
+                                  [E,R,MaybeST]),
             setup_callback(?RETRY_DELAY),
             {ok, undefined}
     end.
