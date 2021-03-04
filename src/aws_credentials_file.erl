@@ -20,6 +20,9 @@
 
 -export([fetch/1]).
 
+-type option() :: any().
+
+-spec fetch([option()]) -> {error, any()} | {ok, aws_credentials:credentials(), 'infinity'}.
 fetch(Options) ->
     case does_credentials_file_exist(Options) of
         {error, Error} ->
@@ -28,13 +31,14 @@ fetch(Options) ->
             parse_file(Path, Options)
     end.
 
+-spec does_credentials_file_exist([option()]) -> {error, any()} | string().
 does_credentials_file_exist(Options) ->
     case maybe_add_home(proplists:get_value(<<"credential_path">>, Options, "/.aws/credentials")) of
         {error, _} = Error -> Error;
         Path -> check_path_exists(Path, Options)
     end.
 
-
+-spec maybe_add_home(string()) -> string() | {error, any()}.
 maybe_add_home("/.aws/credentials") ->
     case os:getenv("HOME") of
         false -> {error, could_not_get_home_directory_from_os_environment};
@@ -42,12 +46,14 @@ maybe_add_home("/.aws/credentials") ->
     end;
 maybe_add_home(Other) -> Other.
 
+-spec check_path_exists(string(), [option()]) -> {error, 'file_not_found'} | string().
 check_path_exists(Path, _Options) ->
         case filelib:is_regular(Path) of
             false -> {error, file_not_found};
             true -> Path
         end.
 
+-spec parse_file(string(), [option()]) -> {error, any()} | {ok, aws_credentials:credentials(), 'infinity'}.
 parse_file(Path, Options) ->
     {ok, F} = file:read_file(Path),
     {ok, Profiles} = eini:parse(F),

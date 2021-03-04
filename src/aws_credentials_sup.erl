@@ -14,6 +14,7 @@
 %% API functions
 %%====================================================================
 
+-spec start_link() -> {'ok', pid()}.
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
@@ -22,12 +23,17 @@ start_link() ->
 %%====================================================================
 
 %% Child :: {Id,StartFunc,Restart,Shutdown,Type,Modules}
+-spec init([]) -> {ok, {supervisor:sup_flags(), [supervisor:child_spec()]}}.
 init([]) ->
-    {ok, {{one_for_all, 0, 1},
-          [{aws_credentials, {aws_credentials, start_link, []},
-            permanent,
-            5000,
-            worker,
-            [aws_credentials]}]
-         }
-    }.
+  SupFlags = #{ strategy  => one_for_all
+              , intensity => 0
+              , period    => 1
+              },
+  ChildSpecs = [#{ id       => aws_credentials
+                 , start    => {aws_credentials, start_link, []}
+                 , restart  => permanent
+                 , shutdown => 5000
+                 , type     => worker
+                 , modules  => [aws_credentials]
+                 }],
+  {ok, {SupFlags, ChildSpecs}}.

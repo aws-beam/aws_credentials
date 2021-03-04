@@ -25,6 +25,9 @@
 
 -export([fetch/1]).
 
+-spec fetch(_) ->
+        {'ok', _, 'infinity'} |
+        {error, 'environment_credentials_unavailable'}.
 fetch(_Options) ->
     case {get_env(?AWS_ACCESS), get_env(?AWS_SECRET),
           get_env(?AWS_SESSION), get_env(?AWS_REGION)} of
@@ -47,6 +50,7 @@ fetch(_Options) ->
         _Other -> {error, environment_credentials_unavailable}
     end.
 
+-spec get_env([string()]) -> 'undefined' | binary().
 get_env([]) -> undefined;
 get_env([Head | Tail]) ->
     case {erlang_get_env(Head), os_getenv(Head)} of
@@ -55,9 +59,11 @@ get_env([Head | Tail]) ->
         {_,  OSVal} -> list_to_binary(OSVal)
     end.
 
+-spec os_getenv(string()) -> false | string().
 os_getenv(Var) when is_list(Var) ->
     os:getenv(Var).
 
+-spec erlang_get_env(string()) -> any().
 erlang_get_env(Var) when is_list(Var) ->
     Atom = make_env_var(string:to_lower(Var)),
     case application:get_env(aws_credentials, Atom, undefined) of
@@ -65,4 +71,5 @@ erlang_get_env(Var) when is_list(Var) ->
         {ok, Value} -> Value
     end.
 
+-spec make_env_var([string()]) -> atom().
 make_env_var(Var) when is_list(Var) -> list_to_atom(Var).
