@@ -15,15 +15,7 @@
 -define(RETRY_DELAY, 5). % 5 seconds
 -define(GREGORIAN_TO_EPOCH_SECONDS, 62167219200).
 
--ifdef(OTP_RELEASE).
-%% OTP 21 or newer, let's just be explicit about it...
--if(?OTP_RELEASE >= 21).
--define(CATCH, catch E:R:ST when ShouldCatch ->).
--endif.
--else.
-%% OTP 20 or older
--define(CATCH, catch E:R when ShouldCatch -> ST = erlang:get_stacktrace(),).
--endif.
+-include_lib("kernel/include/logger.hrl").
 
 -export([init/1
         ,terminate/2
@@ -119,12 +111,12 @@ terminate(_Reason, _State) ->
 handle_call(get_credentials, _From, State=#state{credentials=C}) ->
     {reply, C, State};
 handle_call(Args, _From, State) ->
-    error_logger:warning_msg("Unknown call: ~p~n", [Args]),
+    ?LOG_WARNING("Unknown call: ~p~n", [Args]),
     {noreply, State}.
 
 -spec handle_cast(any(), state()) -> {'noreply', state()}.
 handle_cast(Message, State) ->
-    error_logger:warning_msg("Unknown cast: ~p~n", [Message]),
+    ?LOG_WARNING("Unknown cast: ~p~n", [Message]),
     {noreply, State}.
 
 -spec handle_info(any(), state()) -> {'noreply', state()}.
@@ -132,7 +124,7 @@ handle_info(refresh_credentials, State) ->
     {ok, C} = fetch_credentials(),
     {noreply, State#state{credentials=C}};
 handle_info(Message, State) ->
-    error_logger:warning_msg("Unknown message: ~p~n", [Message]),
+    ?LOG_WARNING("Unknown message: ~p~n", [Message]),
     {noreply, State}.
 
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
@@ -154,9 +146,9 @@ fetch_credentials() ->
         {ok, Client, ExpirationTime} = aws_credentials_provider:fetch(),
         setup_update_callback(ExpirationTime),
         {ok, Client}
-    ?CATCH
-            error_logger:info_msg("aws_credentials ignoring exception ~p:~p (~p)~n",
-                                  [E,R,ST]),
+    catch E:R:ST when ShouldCatch ->
+            ?LOG_INFO("aws_credentials ignoring exception ~p:~p (~p)~n",
+                      [E, R, ST]),
             setup_callback(?RETRY_DELAY),
             {ok, undefined}
     end.

@@ -40,6 +40,8 @@
 -callback fetch(options()) ->
   {ok, aws_credentials:credentials(), expiration()} | {error, any()}.
 
+-include_lib("kernel/include/logger.hrl").
+
 -define(DEFAULT_PROVIDERS, [aws_credentials_env,
                             aws_credentials_file,
                             aws_credentials_ecs,
@@ -62,7 +64,7 @@ evaluate_providers([Provider|Providers], Options) when is_atom(Provider) ->
 evaluate_providers([ {Provider, ProviderOpts} | T ], Options) ->
     case Provider:fetch(ProviderOpts ++ Options) of
         {error, _} = Error ->
-            error_logger:error_msg("Provider ~p reports ~p", [Provider, Error]),
+            ?LOG_ERROR("Provider ~p reports ~p", [Provider, Error]),
             evaluate_providers(T, Options);
         Credentials -> Credentials
     end.

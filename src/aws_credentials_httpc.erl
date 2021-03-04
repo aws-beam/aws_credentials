@@ -28,6 +28,9 @@
 -type url() :: string().
 
 -spec start() -> ok.
+
+-include_lib("kernel/include/logger.hrl").
+
 start() ->
     inets:start(httpc, [{profile, ?PROFILE}]).
 
@@ -58,9 +61,9 @@ get(URL, Tries, Remaining, Errs) ->
 
       Error ->
         NewRemaining = Remaining - 1,
-        error_logger:error_msg("Error fetching URL (attempts left: "
-                               "~p of ~p) ~p: ~p.",
-                               [NewRemaining, Tries, URL, Error]),
+        ?LOG_ERROR("Error fetching URL (attempts left: "
+                   "~p of ~p) ~p: ~p.",
+                   [NewRemaining, Tries, URL, Error]),
         timer:sleep((Tries - NewRemaining)*?DELAY),
         get(URL, Tries, NewRemaining, [ Error | Errs ])
     end.
