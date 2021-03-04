@@ -143,9 +143,9 @@ format_status(_, [_PDict, State]) ->
 fetch_credentials() ->
     ShouldCatch = not application:get_env(aws_credentials, fail_if_unavailable, true),
     try
-        {ok, Client, ExpirationTime} = aws_credentials_provider:fetch(),
+        {ok, Credentials, ExpirationTime} = aws_credentials_provider:fetch(),
         setup_update_callback(ExpirationTime),
-        {ok, Client}
+        {ok, Credentials}
     catch E:R:ST when ShouldCatch ->
             ?LOG_INFO("aws_credentials ignoring exception ~p:~p (~p)~n",
                       [E, R, ST]),
