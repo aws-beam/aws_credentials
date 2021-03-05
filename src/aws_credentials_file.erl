@@ -11,8 +11,10 @@
 %%
 %% Environment parameters:
 %% <ul>
-%%   <li> &lt;&lt;"credentials_path"&gt;&gt; - this is the path to the CLI configuration file. By default this is `~/.aws/credentials'</li>
-%%   <li> &lt;&lt;"profile"&gt;&gt; - this is the desired profile to use in the credentials file. By default this is &lt;&lt;"default"&gt;&gt;</li>
+%%   <li> &lt;&lt;"credentials_path"&gt;&gt; - this is the path to the CLI configuration file.
+%%   By default this is `~/.aws/credentials'</li>
+%%   <li> &lt;&lt;"profile"&gt;&gt; - this is the desired profile to use in the credentials file.
+%%   By default this is &lt;&lt;"default"&gt;&gt;</li>
 %% </ul>
 %% @end
 -module(aws_credentials_file).
@@ -46,14 +48,16 @@ maybe_add_home("/.aws/credentials") ->
     end;
 maybe_add_home(Other) -> Other.
 
--spec check_path_exists(string(), [option()]) -> {error, 'file_not_found'} | string().
+-spec check_path_exists(string(), [option()]) ->
+        {error, 'file_not_found'} | string().
 check_path_exists(Path, _Options) ->
         case filelib:is_regular(Path) of
             false -> {error, file_not_found};
             true -> Path
         end.
 
--spec parse_file(string(), [option()]) -> {error, any()} | {ok, aws_credentials:credentials(), 'infinity'}.
+-spec parse_file(string(), [option()]) ->
+        {error, any()} | {ok, aws_credentials:credentials(), 'infinity'}.
 parse_file(Path, Options) ->
     {ok, F} = file:read_file(Path),
     {ok, Profiles} = eini:parse(F),

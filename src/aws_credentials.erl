@@ -9,6 +9,7 @@
 
 %% As per
 %% http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html#instance-metadata-security-credentials
+%%
 %% We make new credentials available at least five minutes prior to the
 %% expiration of the old credentials.
 -define(ALERT_BEFORE_EXPIRY, 300). % 5 minutes
@@ -17,21 +18,21 @@
 
 -include_lib("kernel/include/logger.hrl").
 
--export([init/1
-        ,terminate/2
-        ,code_change/3
-        ,handle_call/3
-        ,handle_cast/2
-        ,handle_info/2
-        ,format_status/2
+-export([ init/1
+        , terminate/2
+        , code_change/3
+        , handle_call/3
+        , handle_cast/2
+        , handle_info/2
+        , format_status/2
         ]).
 
--export([start_link/0
-        ,stop/0
-        ,get_credentials/0
-        ,make_map/3
-        ,make_map/4
-        ,make_map/5
+-export([ start_link/0
+        , stop/0
+        , get_credentials/0
+        , make_map/3
+        , make_map/4
+        , make_map/5
         ]).
 
 -record(state, { credentials = undefined :: map()
@@ -63,7 +64,8 @@ make_map(Provider, AccessId, SecretKey) ->
        secret_access_key => SecretKey
      }.
 
--spec make_map(aws_credentials_provider:provider(), access_key_id(), secret_access_key(), token()) ->
+-spec make_map(aws_credentials_provider:provider(), access_key_id(),
+               secret_access_key(), token()) ->
         credentials().
 make_map(Provider, AccessId, SecretKey, Token) ->
     M = make_map(Provider, AccessId, SecretKey),
@@ -163,7 +165,7 @@ setup_update_callback(Expires) when is_integer(Expires) ->
 
 -spec setup_callback(pos_integer()) -> reference().
 setup_callback(Seconds) ->
-    erlang:send_after(Seconds*1000, self(), refresh_client).
+    erlang:send_after(Seconds * 1000, self(), refresh_client).
 
 -spec seconds_until_timestamp(binary()) -> integer().
 seconds_until_timestamp(Timestamp) ->

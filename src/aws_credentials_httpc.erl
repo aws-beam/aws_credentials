@@ -52,7 +52,8 @@ get(URL, Tries) when is_list(URL)
                      andalso Tries > 0 ->
   get(URL, Tries, Tries, []).
 
--spec get(url(), pos_integer(), pos_integer(), any()) -> {ok, status_code(), body(), [header()]} | {error, any()}.
+-spec get(url(), pos_integer(), pos_integer(), any()) ->
+        {ok, status_code(), body(), [header()]} | {error, any()}.
 get(_URL, _Tries, 0, Errs) -> {error, lists:reverse(Errs)};
 get(URL, Tries, Remaining, Errs) ->
     case make_request(URL) of
@@ -64,7 +65,7 @@ get(URL, Tries, Remaining, Errs) ->
         ?LOG_ERROR("Error fetching URL (attempts left: "
                    "~p of ~p) ~p: ~p.",
                    [NewRemaining, Tries, URL, Error]),
-        timer:sleep((Tries - NewRemaining)*?DELAY),
+        timer:sleep((Tries - NewRemaining) * ?DELAY),
         get(URL, Tries, NewRemaining, [ Error | Errs ])
     end.
 
