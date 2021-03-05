@@ -189,7 +189,7 @@ setup_update_callback(Expires) when is_integer(Expires) ->
 
 -spec setup_callback(pos_integer()) -> reference().
 setup_callback(Seconds) ->
-    erlang:send_after(Seconds * 1000, self(), refresh_client).
+    erlang:send_after(Seconds * 1000, self(), refresh_credentials).
 
 -spec seconds_until_timestamp(binary()) -> integer().
 seconds_until_timestamp(Timestamp) ->
