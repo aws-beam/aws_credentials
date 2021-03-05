@@ -8,8 +8,7 @@
 -behaviour(gen_server).
 
 %% As per
-%% http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/
-%% iam-roles-for-amazon-ec2.html#instance-metadata-security-credentials
+%% http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html#instance-metadata-security-credentials
 %%
 %% We make new credentials available at least five minutes prior to the
 %% expiration of the old credentials.
