@@ -179,7 +179,7 @@ fetch_credentials(Options) ->
             {ok, undefined}
     end.
 
--spec setup_update_callback('infinity' | binary() | integer()) -> ok.
+-spec setup_update_callback('infinity' | binary() | integer()) -> reference().
 setup_update_callback(infinity) -> ok;
 setup_update_callback(Expires) when is_binary(Expires) ->
     RefreshAfter = seconds_until_timestamp(Expires) - ?ALERT_BEFORE_EXPIRY,
