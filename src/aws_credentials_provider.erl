@@ -29,7 +29,7 @@
 
 -export([fetch/0, fetch/1]).
 
--type options() :: proplists:proplist().
+-type options() :: #{provider() => map()}.
 -type expiration() :: binary() | pos_integer() | infinity.
 -type provider() :: aws_credentials_env
                   | aws_credentials_file
@@ -59,13 +59,11 @@ fetch(Options) ->
 -spec evaluate_providers([provider() | {provider(), options()}], []) ->
         {'error', no_credentials} | aws_credentials:credentials().
 evaluate_providers([], _Options) -> {error, no_credentials};
-evaluate_providers([Provider|Providers], Options) when is_atom(Provider) ->
-  evaluate_providers([{Provider, []}|Providers], Options);
-evaluate_providers([ {Provider, ProviderOpts} | T ], Options) ->
-    case Provider:fetch(ProviderOpts ++ Options) of
+evaluate_providers([ Provider | Providers ], Options) ->
+    case Provider:fetch(Options) of
         {error, _} = Error ->
             ?LOG_ERROR("Provider ~p reports ~p", [Provider, Error]),
-            evaluate_providers(T, Options);
+            evaluate_providers(Providers, Options);
         Credentials -> Credentials
     end.
 

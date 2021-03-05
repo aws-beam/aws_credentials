@@ -22,9 +22,8 @@
 
 -export([fetch/1]).
 
--type option() :: any().
-
--spec fetch([option()]) -> {error, any()} | {ok, aws_credentials:credentials(), 'infinity'}.
+-spec fetch(aws_credentials_provider:options()) ->
+        {error, any()} | {ok, aws_credentials:credentials(), 'infinity'}.
 fetch(Options) ->
     case does_credentials_file_exist(Options) of
         {error, Error} ->
@@ -33,11 +32,12 @@ fetch(Options) ->
             parse_file(Path, Options)
     end.
 
--spec does_credentials_file_exist([option()]) -> {error, any()} | string().
+-spec does_credentials_file_exist(aws_credentials_provider:options()) ->
+        {error, any()} | string().
 does_credentials_file_exist(Options) ->
-    case maybe_add_home(proplists:get_value(<<"credential_path">>, Options, "/.aws/credentials")) of
+    case maybe_add_home(maps:get(credential_path, Options, "/.aws/credentials")) of
         {error, _} = Error -> Error;
-        Path -> check_path_exists(Path, Options)
+        Path -> check_path_exists(Path)
     end.
 
 -spec maybe_add_home(string()) -> string() | {error, any()}.
@@ -48,20 +48,19 @@ maybe_add_home("/.aws/credentials") ->
     end;
 maybe_add_home(Other) -> Other.
 
--spec check_path_exists(string(), [option()]) ->
-        {error, 'file_not_found'} | string().
-check_path_exists(Path, _Options) ->
-        case filelib:is_regular(Path) of
-            false -> {error, file_not_found};
-            true -> Path
-        end.
+-spec check_path_exists(string()) -> {error, 'file_not_found'} | string().
+check_path_exists(Path) ->
+    case filelib:is_regular(Path) of
+      false -> {error, file_not_found};
+      true -> Path
+    end.
 
--spec parse_file(string(), [option()]) ->
+-spec parse_file(string(), aws_credentials_provider:options()) ->
         {error, any()} | {ok, aws_credentials:credentials(), 'infinity'}.
 parse_file(Path, Options) ->
     {ok, F} = file:read_file(Path),
     {ok, Profiles} = eini:parse(F),
-    Desired = proplists:get_value(<<"profile">>, Options, <<"default">>),
+    Desired = maps:get(profile, Options, <<"default">>),
 
     case maps:get(Desired, Profiles, false) of
         false -> {error, {desired_profile_not_found, Desired}};
