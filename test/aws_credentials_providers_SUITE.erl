@@ -51,8 +51,8 @@ init_per_group(GroupName, Config) ->
   Context = setup_provider(GroupName),
   Provider = provider(GroupName),
   ProviderOpts = provider_opts(GroupName, Config),
-  application:set_env(aws_credentials, credential_providers,
-                      [{Provider, ProviderOpts}]),
+  application:set_env(aws_credentials, credential_providers, [Provider]),
+  application:set_env(aws_credentials, provider_options, ProviderOpts),
   {ok, Started} = application:ensure_all_started(aws_credentials),
   [{started, Started}, {context, Context}|Config].
 
@@ -92,13 +92,13 @@ provider(GroupName) ->
 provider_opts(file, Config) ->
   DataDir = ?config(data_dir, Config),
   CredentialsPath = filename:join([DataDir, "credentials"]),
-  [{<<"credential_path">>, CredentialsPath}];
+  #{credential_path => CredentialsPath};
 provider_opts(ec2, _Config) ->
-  [];
+  #{};
 provider_opts(env, _Config) ->
-  [];
+  #{};
 provider_opts(ecs, _Config) ->
-  [].
+  #{}.
 
 group_name(Config) ->
   GroupProperties = ?config(tc_group_properties, Config),
