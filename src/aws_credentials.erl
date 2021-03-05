@@ -175,8 +175,8 @@ fetch_credentials(Options) ->
     catch E:R:ST when ShouldCatch ->
             ?LOG_INFO("aws_credentials ignoring exception ~p:~p (~p)~n",
                       [E, R, ST]),
-            setup_callback(?RETRY_DELAY),
-            {ok, undefined}
+            Ref = setup_callback(?RETRY_DELAY),
+            {ok, undefined, Ref}
     end.
 
 -spec setup_update_callback('infinity' | binary() | integer()) -> reference().
