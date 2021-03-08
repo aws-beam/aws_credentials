@@ -141,12 +141,17 @@ teardown_provider(Context) ->
 
 mock_httpc_request_ec2(Method, Request, HTTPOptions, Options, Profile) ->
   case Request of
-    {"http://169.254.169.254/latest/meta-data/iam/security-credentials/", []} ->
+    {"http://169.254.169.254/latest/api/token/", _RequestHeaders} ->
+      {ok, response('session-token')};
+    % TODO: Pattern match the session token in RequestHeaders below
+    {"http://169.254.169.254/latest/meta-data/iam/security-credentials/", _RequestHeaders} ->
       {ok, response('security-credentials')};
-    {"http://169.254.169.254/latest/meta-data/iam/security-credentials/dummy-role", []} ->
+    {"http://169.254.169.254/latest/meta-data/iam/security-credentials/dummy-role",
+     _RequestHeaders} ->
       {ok, response('dummy-role')};
-    {"http://169.254.169.254/latest/dynamic/instance-identity/document", []} ->
+    {"http://169.254.169.254/latest/dynamic/instance-identity/document", _RequestHeaders} ->
       {ok, response('document')};
+    % TODO: Return 401 and no body if session token is missing, to match AWS
     _ ->
       meck:passthrough([Method, Request, HTTPOptions, Options, Profile])
   end.
@@ -165,6 +170,8 @@ response(BodyTag) ->
   Body = body(BodyTag),
   {StatusLine, Headers, Body}.
 
+body('session-token') ->
+  <<"session-token">>;
 body('security-credentials') ->
   <<"dummy-role">>;
 body('dummy-role') ->
