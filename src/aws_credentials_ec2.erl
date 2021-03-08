@@ -34,7 +34,8 @@ fetch(_Options) ->
     {ok, SessionToken} = fetch_session_token(),
     {ok, RequestHeaders} = request_headers(SessionToken),
     {ok, Role} = fetch_role(RequestHeaders),
-    {ok, AccessKeyID, SecretAccessKey, ExpirationTime, Token} = fetch_metadata(Role, RequestHeaders),
+    {ok, AccessKeyID, SecretAccessKey, ExpirationTime, Token} =
+      fetch_metadata(Role, RequestHeaders),
     {ok, Region} = fetch_document(RequestHeaders),
     Credentials = aws_credentials:make_map(?MODULE, AccessKeyID, SecretAccessKey, Token, Region),
     {ok, Credentials, ExpirationTime}.
@@ -42,8 +43,9 @@ fetch(_Options) ->
 -spec fetch_session_token() -> {ok, session_token()}.
 fetch_session_token() ->
   RequestHeaders = [{?SESSION_TOKEN_TTL_HEADER, ?SESSION_TOKEN_TTL_SECONDS}],
-  {ok, 200, Body, _Headers} = aws_credentials_httpc:request(put, ?SESSION_TOKEN_URL, RequestHeaders),
-    {ok, Body}.
+  {ok, 200, Body, _Headers} =
+    aws_credentials_httpc:request(put, ?SESSION_TOKEN_URL, RequestHeaders),
+  {ok, Body}.
 
 -spec request_headers(session_token()) -> {ok, request_headers()}.
 request_headers(SessionToken) ->
@@ -53,7 +55,8 @@ request_headers(SessionToken) ->
 
 -spec fetch_role(request_headers()) -> {ok, role()}.
 fetch_role(RequestHeaders) ->
-    {ok, 200, Body, _Headers} = aws_credentials_httpc:request(get, ?CREDENTIAL_URL, RequestHeaders),
+    {ok, 200, Body, _Headers} =
+      aws_credentials_httpc:request(get, ?CREDENTIAL_URL, RequestHeaders),
     {ok, Body}.
 
 -spec fetch_metadata(role(), request_headers()) -> {'ok', binary(), binary(), binary(), binary()}.
