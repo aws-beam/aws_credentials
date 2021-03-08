@@ -69,7 +69,7 @@ fetch_metadata(Role, RequestHeaders) ->
      maps:get(<<"Expiration">>, Map),
      maps:get(<<"Token">>, Map)}.
 
--spec fetch_document(binary()) -> {ok, binary()}.
+-spec fetch_document(request_headers()) -> {ok, binary()}.
 fetch_document(RequestHeaders) ->
     {ok, 200, Body, _Headers} = aws_credentials_httpc:request(get, ?DOCUMENT_URL, RequestHeaders),
     Map = jsx:decode(Body),
