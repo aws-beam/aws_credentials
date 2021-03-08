@@ -41,7 +41,8 @@ start() ->
 request(Method, URL) ->
   request(Method, URL, ?DEFAULT_HEADERS, ?DEFAULT_TRIES).
 
--spec request(method(), url(), [header()]) -> {'error', any()} | {'ok', status_code(), body(), [header()]}.
+-spec request(method(), url(), [header()]) ->
+  {'error', any()} | {'ok', status_code(), body(), [header()]}.
 request(Method, URL, RequestHeaders) ->
   request(Method, URL, RequestHeaders, ?DEFAULT_TRIES).
 
@@ -53,7 +54,8 @@ request(Method, URL, RequestHeaders) ->
 %% successfully get the desired data. That is, it will return an
 %% ok tuple with a status code of 500 or 404 or some other HTTP error
 %% code and no data.
--spec request(method(), url(), [header()], pos_integer() ) -> {ok, status_code(), body(), [header()]} | {error, any()}.
+-spec request(method(), url(), [header()], pos_integer() ) ->
+  {ok, status_code(), body(), [header()]} | {error, any()}.
 request(Method, URL, RequestHeaders, Tries) when is_atom(Method)
                      andalso is_list(URL)
                      andalso is_integer(Tries)
