@@ -19,6 +19,7 @@
 
 -define(DUMMY_ACCESS_KEY, <<"dummy_access_key">>).
 -define(DUMMY_SECRET_ACCESS_KEY, <<"dummy_secret_access_key">>).
+-define(DUMMY_SESSION_TOKEN, "dummy-session-token").
 
 all() ->
   [ {group, file}
@@ -140,21 +141,19 @@ teardown_provider(Context) ->
   ok.
 
 mock_httpc_request_ec2(Method, Request, HTTPOptions, Options, Profile) ->
+  Headers = [{"X-aws-ec2-metadata-token", ?DUMMY_SESSION_TOKEN}],
   case Request of
-    {"http://169.254.169.254/latest/api/token/", _RequestHeaders} ->
+    {"http://169.254.169.254/latest/api/token/", _Headers} ->
       {ok, response('session-token')};
-    % TODO: Pattern match the session token in RequestHeaders below
-    {"http://169.254.169.254/latest/meta-data/iam/security-credentials/", _RequestHeaders} ->
+    {"http://169.254.169.254/latest/meta-data/iam/security-credentials/", Headers} ->
       {ok, response('security-credentials')};
-    {"http://169.254.169.254/latest/meta-data/iam/security-credentials/dummy-role",
-     _RequestHeaders} ->
-      {ok, response('dummy-role')};
-    {"http://169.254.169.254/latest/dynamic/instance-identity/document", _RequestHeaders} ->
+    {"http://169.254.169.254/latest/meta-data/iam/security-credentials/dummy-role", Headers} ->
+                  {ok, response('dummy-role')};
+    {"http://169.254.169.254/latest/dynamic/instance-identity/document", Headers} ->
       {ok, response('document')};
-    % TODO: Return 401 and no body if session token is missing, to match AWS
     _ ->
       meck:passthrough([Method, Request, HTTPOptions, Options, Profile])
-  end.
+end.
 
 mock_httpc_request_ecs(Method, Request, HTTPOptions, Options, Profile) ->
   case Request of
@@ -171,7 +170,7 @@ response(BodyTag) ->
   {StatusLine, Headers, Body}.
 
 body('session-token') ->
-  <<"session-token">>;
+  <<?DUMMY_SESSION_TOKEN>>;
 body('security-credentials') ->
   <<"dummy-role">>;
 body('dummy-role') ->
