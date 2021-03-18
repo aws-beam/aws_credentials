@@ -14,7 +14,7 @@ fetch(_Options) ->
     false -> {error, container_credentials_unavailable};
     _ ->
       Path = "http://169.254.170.2" ++ RelativeUri,
-      case aws_credentials_httpc:get(Path) of
+      case aws_credentials_httpc:request(get, Path) of
         {ok, _Status, Body, _Headers} ->
           #{ <<"AccessKeyId">> := AccessKeyId
            , <<"SecretAccessKey">> := SecretAccessKey
