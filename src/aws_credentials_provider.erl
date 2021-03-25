@@ -62,7 +62,9 @@ evaluate_providers([], _Options) -> {error, no_credentials};
 evaluate_providers([ Provider | Providers ], Options) ->
     case Provider:fetch(Options) of
         {error, _} = Error ->
-            ?LOG_ERROR("Provider ~p reports ~p", [Provider, Error]),
+            ?LOG_ERROR("Provider ~p reports ~p",
+                       [Provider, Error],
+                       #{domain => [aws_credentials]}),
             evaluate_providers(Providers, Options);
         Credentials -> Credentials
     end.

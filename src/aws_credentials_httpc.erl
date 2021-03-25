@@ -74,7 +74,8 @@ request(Method, URL, RequestHeaders, Tries, Remaining, Errs) ->
         NewRemaining = Remaining - 1,
         ?LOG_ERROR("Error fetching URL (attempts left: "
                    "~p of ~p) ~p: ~p.",
-                   [NewRemaining, Tries, URL, Error]),
+                   [NewRemaining, Tries, URL, Error],
+                   #{domain => [aws_credentials]}),
         timer:sleep((Tries - NewRemaining) * ?DELAY),
         request(Method, URL, RequestHeaders, Tries, NewRemaining, [ Error | Errs ])
     end.

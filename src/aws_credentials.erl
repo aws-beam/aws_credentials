@@ -135,12 +135,12 @@ handle_call({force_refresh, Options}, _From, State=#state{tref=T}) ->
     erlang:cancel_timer(T),
     {reply, C, State#state{credentials=C, tref=NewT}};
 handle_call(Args, _From, State) ->
-    ?LOG_WARNING("Unknown call: ~p~n", [Args]),
+    ?LOG_WARNING("Unknown call: ~p~n", [Args], #{domain => [aws_credentials]}),
     {noreply, State}.
 
 -spec handle_cast(any(), state()) -> {'noreply', state()}.
 handle_cast(Message, State) ->
-    ?LOG_WARNING("Unknown cast: ~p~n", [Message]),
+    ?LOG_WARNING("Unknown cast: ~p~n", [Message], #{domain => [aws_credentials]}),
     {noreply, State}.
 
 -spec handle_info(any(), state()) -> {'noreply', state()}.
@@ -149,7 +149,7 @@ handle_info(refresh_credentials, State) ->
     {ok, C, T} = fetch_credentials(ProviderOptions),
     {noreply, State#state{credentials=C, tref=T}};
 handle_info(Message, State) ->
-    ?LOG_WARNING("Unknown message: ~p~n", [Message]),
+    ?LOG_WARNING("Unknown message: ~p~n", [Message], #{domain => [aws_credentials]}),
     {noreply, State}.
 
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
@@ -174,7 +174,8 @@ fetch_credentials(Options) ->
         {ok, Credentials, Tref}
     catch E:R:ST when ShouldCatch ->
             ?LOG_INFO("aws_credentials ignoring exception ~p:~p (~p)~n",
-                      [E, R, ST]),
+                      [E, R, ST],
+                      #{domain => [aws_credentials]}),
             Ref = setup_callback(?RETRY_DELAY),
             {ok, undefined, Ref}
     end.
