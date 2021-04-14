@@ -102,7 +102,7 @@ get_credentials() ->
 %% options if any).
 -spec force_credentials_refresh() -> credentials() | {error, any()}.
 force_credentials_refresh() ->
-    ProviderOptions = application:get_env(aws_credentials, provider_options, []),
+    ProviderOptions = application:get_env(aws_credentials, provider_options, #{}),
     force_credentials_refresh(ProviderOptions).
 
 %% @doc Force a credentials update, passing options (which possibly override
@@ -118,7 +118,7 @@ force_credentials_refresh(Options) ->
 
 -spec init(_) -> {'ok', state()}.
 init(_Args) ->
-    ProviderOptions = application:get_env(aws_credentials, provider_options, []),
+    ProviderOptions = application:get_env(aws_credentials, provider_options, #{}),
     {ok, C, T} = fetch_credentials(ProviderOptions),
     {ok, #state{credentials=C, tref=T}}.
 
@@ -145,7 +145,7 @@ handle_cast(Message, State) ->
 
 -spec handle_info(any(), state()) -> {'noreply', state()}.
 handle_info(refresh_credentials, State) ->
-    ProviderOptions = application:get_env(aws_credentials, provider_options, []),
+    ProviderOptions = application:get_env(aws_credentials, provider_options, #{}),
     {ok, C, T} = fetch_credentials(ProviderOptions),
     {noreply, State#state{credentials=C, tref=T}};
 handle_info(Message, State) ->
