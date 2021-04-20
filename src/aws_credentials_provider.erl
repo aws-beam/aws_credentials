@@ -19,7 +19,7 @@
 %%
 %% If a provider returns {ok, ...} then evaluation stops at that provider.
 %% If it returns {error, ...} then the next provider is executed in order
-%% until either a set of credentials are returns or the tuple
+%% until either a set of credentials are returned or the tuple
 %% `{error, no_credentials}' is returned.
 %%
 %% If a new provider is desired, the behaviour interface should be

@@ -168,16 +168,20 @@ format_status(_, [_PDict, State]) ->
         {ok, credentials() | 'undefined', reference() | 'undefined'}.
 fetch_credentials(Options) ->
     ShouldCatch = not application:get_env(aws_credentials, fail_if_unavailable, true),
-    try
-        {ok, Credentials, ExpirationTime} = aws_credentials_provider:fetch(Options),
-        Tref = setup_update_callback(ExpirationTime),
-        {ok, Credentials, Tref}
+    try aws_credentials_provider:fetch(Options) of
+          {ok, Credentials, ExpirationTime} ->
+            Tref = setup_update_callback(ExpirationTime),
+            {ok, Credentials, Tref};
+          {error, 'no_credentials'} when ShouldCatch ->
+            ?LOG_INFO("No credentials available~n",
+                      [],
+                      #{domain => [aws_credentials]}),
+            {ok, undefined, setup_callback(?RETRY_DELAY)}
     catch E:R:ST when ShouldCatch ->
             ?LOG_INFO("aws_credentials ignoring exception ~p:~p (~p)~n",
                       [E, R, ST],
                       #{domain => [aws_credentials]}),
-            Ref = setup_callback(?RETRY_DELAY),
-            {ok, undefined, Ref}
+            {ok, undefined, setup_callback(?RETRY_DELAY)}
     end.
 
 -spec setup_update_callback('infinity' | binary() | integer()) -> reference().
