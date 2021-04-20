@@ -19,7 +19,7 @@
 %%
 %% If a provider returns {ok, ...} then evaluation stops at that provider.
 %% If it returns {error, ...} then the next provider is executed in order
-%% until either a set of credentials are returns or the tuple
+%% until either a set of credentials are returned or the tuple
 %% `{error, no_credentials}' is returned.
 %%
 %% If a new provider is desired, the behaviour interface should be
@@ -47,17 +47,22 @@
                             aws_credentials_ecs,
                             aws_credentials_ec2]).
 
--spec fetch() -> {'error', 'no_credentials'} | aws_credentials:credentials().
+-spec fetch() ->
+        {ok, aws_credentials:credentials(), expiration()} |
+        {'error', 'no_credentials'}.
 fetch() ->
-    fetch([]).
+    fetch(#{}).
 
--spec fetch([]) -> {'error', 'no_credentials'} | aws_credentials:credentials().
+-spec fetch(options()) ->
+        {ok, aws_credentials:credentials(), expiration()} |
+        {'error', 'no_credentials'}.
 fetch(Options) ->
     Providers = get_env(credential_providers, ?DEFAULT_PROVIDERS),
     evaluate_providers(Providers, Options).
 
--spec evaluate_providers([provider() | {provider(), options()}], []) ->
-        {'error', no_credentials} | aws_credentials:credentials().
+-spec evaluate_providers([provider() | {provider(), options()}], options()) ->
+        {ok, aws_credentials:credentials(), expiration()} |
+        {'error', no_credentials}.
 evaluate_providers([], _Options) -> {error, no_credentials};
 evaluate_providers([ Provider | Providers ], Options) ->
     case Provider:fetch(Options) of
@@ -66,7 +71,8 @@ evaluate_providers([ Provider | Providers ], Options) ->
                        [Provider, Error],
                        #{domain => [aws_credentials]}),
             evaluate_providers(Providers, Options);
-        Credentials -> Credentials
+        {ok, Credentials, Expiration} ->
+            {ok, Credentials, Expiration}
     end.
 
 -spec get_env(atom(), [provider()]) -> any().
