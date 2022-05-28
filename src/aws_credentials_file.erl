@@ -70,10 +70,12 @@ parse_file(Path, Options) ->
                   {ok, aws_credentials:make_map(?MODULE,
                                               maps:get(<<"aws_access_key_id">>, Profile),
                                               maps:get(<<"aws_secret_access_key">>, Profile),
-                                              maps:get(<<"aws_session_token">>, Profile)), infinity};
+                                              maps:get(<<"aws_session_token">>, Profile)),
+                   infinity};
               false ->
                 {ok, aws_credentials:make_map(?MODULE,
                                               maps:get(<<"aws_access_key_id">>, Profile),
-                                              maps:get(<<"aws_secret_access_key">>, Profile)), infinity}
+                                              maps:get(<<"aws_secret_access_key">>, Profile)),
+                 infinity}
             end
     end.
