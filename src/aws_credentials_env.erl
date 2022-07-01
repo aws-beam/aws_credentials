@@ -41,6 +41,12 @@ fetch(_Options) ->
                                   is_binary(T) ->
             {ok, aws_credentials:make_map(?MODULE, K, S, T), infinity};
 
+        {K, S, undefined, R} when is_binary(K),
+                                  is_binary(S),
+                                  is_binary(R) ->
+            Credentials = aws_credentials:make_map(?MODULE, K, S),
+            {ok, maps:put(region, R, Credentials), infinity};
+
         {K, S, T, R} when is_binary(K),
                           is_binary(S),
                           is_binary(T),
