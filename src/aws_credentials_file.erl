@@ -26,8 +26,8 @@
         {error, any()} | {ok, aws_credentials:credentials(), 'infinity'}.
 fetch(Options) ->
     FilePath = get_file_path(Options),
-    ConfigPath = does_credentials_file_exist(FilePath, "config"),
-    case does_credentials_file_exist(FilePath, "credentials") of
+    ConfigPath = does_credentials_file_exist(FilePath, config),
+    case does_credentials_file_exist(FilePath, credentials) of
         {error, Error} ->
             {error, {credentials_file_does_not_exist, Error}};
         CredentialsPath ->
@@ -35,10 +35,20 @@ fetch(Options) ->
             maybe_add_region(CredFile, ConfigPath, Options)
     end.
 
--spec does_credentials_file_exist(string(), string()) -> {error, any()} | string().
-does_credentials_file_exist({error, _} = Error, _FileName) -> Error;
-does_credentials_file_exist(Path, FileName) ->
-    check_path_exists(Path ++ FileName).
+-spec does_credentials_file_exist(string(), atom()) -> {error, any()} | string().
+does_credentials_file_exist({error, _} = Error, _File) -> Error;
+does_credentials_file_exist(Path, credentials) ->
+    maybe_path_from_env("AWS_SHARED_CREDENTIALS_FILE", check_path_exists(Path ++ "credentials"));
+does_credentials_file_exist(Path, config) ->
+    maybe_path_from_env("AWS_CONFIG_FILE", check_path_exists(Path ++ "config")).
+
+-spec maybe_path_from_env(string(), string()) -> {error, any()} | string().
+maybe_path_from_env(EnvVar, FilePath) ->
+    case {os:getenv(EnvVar), FilePath} of
+        {false, {error, _} = Error} -> Error;
+        {false, Path} -> Path;
+        {EnvPath, _} -> check_path_exists(EnvPath)
+    end.
 
 -spec get_file_path(aws_credentials_provider:options()) -> {error, any()} | string().
 get_file_path(Options) ->
@@ -81,11 +91,11 @@ check_path_exists(Path) ->
 parse_credentials_file(Path, Options) ->
     {ok, F} = file:read_file(Path),
     {ok, Profiles} = eini:parse(F),
-    Desired = maps:get(profile, Options, <<"default">>),
+    Desired = desired_profile(Options),
 
-    case maps:get(Desired, Profiles, false) of
-        false -> {error, {desired_profile_not_found, Desired}};
-        Profile ->
+    case read_from_profile(Profiles, Desired) of
+        {error, _} = Error -> Error;
+        {ok, Profile} ->
             case maps:is_key(<<"aws_session_token">>, Profile) of
               true ->
                   {ok, aws_credentials:make_map(?MODULE,
@@ -106,9 +116,20 @@ parse_credentials_file(Path, Options) ->
 parse_config_file(Path, Options) ->
     {ok, F} = file:read_file(Path),
     {ok, Profiles} = eini:parse(F),
-    Desired = maps:get(profile, Options, <<"default">>),
+    Desired = desired_profile(Options),
+    read_from_profile(Profiles, Desired).
 
-    case maps:get(Desired, Profiles, false) of
-        false -> {error, {desired_profile_not_found, Desired}};
-        Profile -> {ok, Profile}
+-spec read_from_profile(map(), binary()) -> any().
+read_from_profile(File, Profile) ->
+    case maps:get(Profile, File, undefined) of
+        undefined -> {error, {desired_profile_not_found, Profile}};
+        Map -> {ok, Map}
+    end.
+
+-spec desired_profile(aws_credentials_provider:options()) -> binary().
+desired_profile(Options) ->
+    case {os:getenv("AWS_PROFILE"), maps:get(profile, Options, undefined)} of
+        {false, undefined} -> <<"default">>;
+        {false, Profile} -> Profile;
+        {AwsProfile, undefined} -> list_to_binary(AwsProfile)
     end.
