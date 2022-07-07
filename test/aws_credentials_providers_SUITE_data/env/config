@@ -1,5 +1,2 @@
 [default]
-region = us-east-1
-
-[foo]
 region = us-east-2

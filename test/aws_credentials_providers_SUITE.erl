@@ -18,13 +18,19 @@
 -include_lib("stdlib/include/assert.hrl").
 
 -define(DUMMY_ACCESS_KEY, <<"dummy_access_key">>).
+-define(DUMMY_ACCESS_KEY2, <<"dummy_access_key2">>).
 -define(DUMMY_SECRET_ACCESS_KEY, <<"dummy_secret_access_key">>).
+-define(DUMMY_SECRET_ACCESS_KEY2, <<"dummy_secret_access_key2">>).
 -define(DUMMY_SESSION_TOKEN, "dummy-session-token").
 -define(DUMMY_REGION, <<"us-east-1">>).
+-define(DUMMY_REGION2, <<"us-east-2">>).
 
 all() ->
   [ {group, file}
   , {group, config_credential}
+  , {group, config_env}
+  , {group, credential_env}
+  , {group, profile_env}
   , {group, ec2}
   , {group, env}
   , {group, ecs}
@@ -33,6 +39,9 @@ all() ->
 groups() ->
   [ {file, [], all_testcases()}
   , {config_credential, [], all_testcases()}
+  , {config_env, [], all_testcases()}
+  , {credential_env, [], all_testcases()}
+  , {profile_env, [], all_testcases()}
   , {ec2, [], all_testcases()}
   , {env, [], all_testcases()}
   , {ecs, [], all_testcases()}
@@ -51,16 +60,14 @@ init_per_suite(Config) ->
 end_per_suite(Config) ->
   Config.
 
-init_per_group(config_credential, Config) ->
-  Context = setup_provider(file),
-  Provider = provider(file),
-  ProviderOpts = provider_opts(config_credential, Config),
-  init_group(Provider, ProviderOpts, Context, Config);
 init_per_group(GroupName, Config) ->
-  Context = setup_provider(GroupName),
-  Provider = provider(GroupName),
-  ProviderOpts = provider_opts(GroupName, Config),
-  init_group(Provider, ProviderOpts, Context, Config).
+  case GroupName of
+    config_credential -> init_group(config_credential, provider(file), config_credential, Config);
+    config_env -> init_group(config_env, provider(file), file, Config);
+    credential_env -> init_group(credential_env, provider(file), credential_env, Config);
+    profile_env -> init_group(profile_env, provider(file), config_credential, Config);
+    GroupName -> init_group(GroupName, Config)
+  end.
 
 end_per_group(_GroupName, Config) ->
   [application:stop(App) || App <- ?config(started, Config)],
@@ -88,24 +95,39 @@ get_credentials(Config) ->
 
 assert_test(config_credential) ->
   Provider = provider(file),
+  assert_values(?DUMMY_ACCESS_KEY, ?DUMMY_SECRET_ACCESS_KEY, Provider, ?DUMMY_REGION);
+assert_test(config_env) ->
+  Provider = provider(file),
+  assert_values(?DUMMY_ACCESS_KEY, ?DUMMY_SECRET_ACCESS_KEY, Provider, ?DUMMY_REGION2);
+assert_test(credential_env) ->
+  Provider = provider(file),
+  assert_values(?DUMMY_ACCESS_KEY2, ?DUMMY_SECRET_ACCESS_KEY2, Provider);
+assert_test(profile_env) ->
+  Provider = provider(file),
+  assert_values(?DUMMY_ACCESS_KEY2, ?DUMMY_SECRET_ACCESS_KEY2, Provider);
+assert_test(GroupName) ->
+  Provider = provider(GroupName),
+  assert_values(?DUMMY_ACCESS_KEY, ?DUMMY_SECRET_ACCESS_KEY, Provider).
+
+assert_values(DummyAccessKey, DummySecretAccessKey, Provider) ->
+  #{ access_key_id := AccessKeyId
+   , credential_provider := CredentialProvider
+   , secret_access_key := SecretAccessKey
+   } = aws_credentials:get_credentials(),
+  ?assertEqual(DummyAccessKey, AccessKeyId),
+  ?assertEqual(Provider, CredentialProvider),
+  ?assertEqual(DummySecretAccessKey, SecretAccessKey).
+
+assert_values(DummyAccessKey, DummySecretAccessKey, Provider, DummyRegion) ->
   #{ access_key_id := AccessKeyId
    , credential_provider := CredentialProvider
    , secret_access_key := SecretAccessKey
    , region := Region
    } = aws_credentials:get_credentials(),
-  ?assertEqual(?DUMMY_ACCESS_KEY, AccessKeyId),
+  ?assertEqual(DummyAccessKey, AccessKeyId),
   ?assertEqual(Provider, CredentialProvider),
-  ?assertEqual(?DUMMY_SECRET_ACCESS_KEY, SecretAccessKey),
-  ?assertEqual(?DUMMY_REGION, Region);
-assert_test(GroupName) ->
-  Provider = provider(GroupName),
-  #{ access_key_id := AccessKeyId
-   , credential_provider := CredentialProvider
-   , secret_access_key := SecretAccessKey
-   } = aws_credentials:get_credentials(),
-  ?assertEqual(?DUMMY_ACCESS_KEY, AccessKeyId),
-  ?assertEqual(Provider, CredentialProvider),
-  ?assertEqual(?DUMMY_SECRET_ACCESS_KEY, SecretAccessKey).
+  ?assertEqual(DummySecretAccessKey, SecretAccessKey),
+  ?assertEqual(DummyRegion, Region).
 
 %% Helpers ====================================================================
 provider(GroupName) ->
@@ -115,14 +137,17 @@ provider_opts(file, Config) ->
   #{credential_path => ?config(data_dir, Config)};
 provider_opts(config_credential, Config) ->
   #{credential_path => ?config(data_dir, Config) ++ "config_credential/"};
-provider_opts(ec2, _Config) ->
-  #{};
-provider_opts(env, _Config) ->
-  #{};
-provider_opts(ecs, _Config) ->
+provider_opts(credential_env, _Config) ->
+  #{credential_path => os:getenv("HOME")};
+provider_opts(_GroupName, _Config) ->
   #{}.
 
-init_group(Provider, ProviderOpts, Context, Config) ->
+init_group(GroupName, Config) ->
+  init_group(GroupName, provider(GroupName), GroupName, Config).
+
+init_group(GroupName, Provider, ProviderName, Config) ->
+  Context = setup_provider(GroupName, Config),
+  ProviderOpts = provider_opts(ProviderName, Config),
   application:set_env(aws_credentials, credential_providers, [Provider]),
   application:set_env(aws_credentials, provider_options, ProviderOpts),
   {ok, Started} = application:ensure_all_started(aws_credentials),
@@ -132,13 +157,13 @@ group_name(Config) ->
   GroupProperties = ?config(tc_group_properties, Config),
   proplists:get_value(name, GroupProperties).
 
-setup_provider(ec2) ->
+setup_provider(ec2, _Config) ->
   meck:new(httpc, [no_link, passthrough]),
   meck:expect(httpc, request, fun mock_httpc_request_ec2/5),
   #{ mocks => [httpc]
    , env => []
    };
-setup_provider(env) ->
+setup_provider(env, _Config) ->
   OldAccessKeyId = os:getenv("AWS_ACCESS_KEY_ID"),
   OldSecretAccessKey = os:getenv("AWS_SECRET_ACCESS_KEY"),
   os:putenv("AWS_ACCESS_KEY_ID", binary_to_list(?DUMMY_ACCESS_KEY)),
@@ -148,7 +173,7 @@ setup_provider(env) ->
             , {"AWS_SECRET_ACCESS_KEY", OldSecretAccessKey}
             ]
    };
-setup_provider(ecs) ->
+setup_provider(ecs, _Config) ->
   OldUri = os:getenv("AWS_CONTAINER_CREDENTIALS_RELATIVE_URI"),
   os:putenv("AWS_CONTAINER_CREDENTIALS_RELATIVE_URI", "/dummy-uri"),
   meck:new(httpc, [no_link, passthrough]),
@@ -156,7 +181,25 @@ setup_provider(ecs) ->
   #{ mocks => [httpc]
    , env => [{"AWS_CONTAINER_CREDENTIALS_RELATIVE_URI", OldUri}]
    };
-setup_provider(_GroupName) ->
+setup_provider(config_env, Config) ->
+  Old = os:getenv("AWS_CONFIG_FILE"),
+  os:putenv("AWS_CONFIG_FILE", ?config(data_dir, Config) ++ "env/config"),
+  #{ mocks => []
+   , env => [{"AWS_CONFIG_FILE", Old}]
+   };
+setup_provider(credential_env, Config) ->
+  Old = os:getenv("AWS_SHARED_CREDENTIALS_FILE"),
+  os:putenv("AWS_SHARED_CREDENTIALS_FILE", ?config(data_dir, Config) ++ "env/credentials"),
+  #{ mocks => []
+   , env => [{"AWS_SHARED_CREDENTIALS_FILE", Old}]
+   };
+setup_provider(profile_env, _Config) ->
+  Old = os:getenv("AWS_PROFILE"),
+  os:putenv("AWS_PROFILE", "foo"),
+  #{ mocks => []
+   , env => [{"AWS_PROFILE", Old}]
+   };
+setup_provider(_GroupName, _Config) ->
   #{ mocks => []
    , env => []
    }.
@@ -215,7 +258,7 @@ body('dummy-uri') ->
               , 'Token' => unused
               }).
 
-maybe_put_env(_Key, false) ->
-  ok;
+maybe_put_env(Key, false) ->
+  os:unsetenv(Key);
 maybe_put_env(Key, Value) ->
   os:putenv(Key, Value).
