@@ -20,9 +20,11 @@
 -define(DUMMY_ACCESS_KEY, <<"dummy_access_key">>).
 -define(DUMMY_SECRET_ACCESS_KEY, <<"dummy_secret_access_key">>).
 -define(DUMMY_SESSION_TOKEN, "dummy-session-token").
+-define(DUMMY_REGION, <<"us-east-1">>).
 
 all() ->
   [ {group, file}
+  , {group, config_credential}
   , {group, ec2}
   , {group, env}
   , {group, ecs}
@@ -30,6 +32,7 @@ all() ->
 
 groups() ->
   [ {file, [], all_testcases()}
+  , {config_credential, [], all_testcases()}
   , {ec2, [], all_testcases()}
   , {env, [], all_testcases()}
   , {ecs, [], all_testcases()}
@@ -48,14 +51,16 @@ init_per_suite(Config) ->
 end_per_suite(Config) ->
   Config.
 
+init_per_group(config_credential, Config) ->
+  Context = setup_provider(file),
+  Provider = provider(file),
+  ProviderOpts = provider_opts(config_credential, Config),
+  init_group(Provider, ProviderOpts, Context, Config);
 init_per_group(GroupName, Config) ->
   Context = setup_provider(GroupName),
   Provider = provider(GroupName),
   ProviderOpts = provider_opts(GroupName, Config),
-  application:set_env(aws_credentials, credential_providers, [Provider]),
-  application:set_env(aws_credentials, provider_options, ProviderOpts),
-  {ok, Started} = application:ensure_all_started(aws_credentials),
-  [{started, Started}, {context, Context}|Config].
+  init_group(Provider, ProviderOpts, Context, Config).
 
 end_per_group(_GroupName, Config) ->
   [application:stop(App) || App <- ?config(started, Config)],
@@ -77,6 +82,22 @@ get_credentials({fin, Config}) ->
   Config;
 get_credentials(Config) ->
   GroupName = group_name(Config),
+  assert_test(GroupName).
+
+%% Test assertions =================================================================
+
+assert_test(config_credential) ->
+  Provider = provider(file),
+  #{ access_key_id := AccessKeyId
+   , credential_provider := CredentialProvider
+   , secret_access_key := SecretAccessKey
+   , region := Region
+   } = aws_credentials:get_credentials(),
+  ?assertEqual(?DUMMY_ACCESS_KEY, AccessKeyId),
+  ?assertEqual(Provider, CredentialProvider),
+  ?assertEqual(?DUMMY_SECRET_ACCESS_KEY, SecretAccessKey),
+  ?assertEqual(?DUMMY_REGION, Region);
+assert_test(GroupName) ->
   Provider = provider(GroupName),
   #{ access_key_id := AccessKeyId
    , credential_provider := CredentialProvider
@@ -91,15 +112,21 @@ provider(GroupName) ->
   list_to_existing_atom("aws_credentials_" ++ atom_to_list(GroupName)).
 
 provider_opts(file, Config) ->
-  DataDir = ?config(data_dir, Config),
-  CredentialsPath = filename:join([DataDir, "credentials"]),
-  #{credential_path => CredentialsPath};
+  #{credential_path => ?config(data_dir, Config)};
+provider_opts(config_credential, Config) ->
+  #{credential_path => ?config(data_dir, Config) ++ "config_credential/"};
 provider_opts(ec2, _Config) ->
   #{};
 provider_opts(env, _Config) ->
   #{};
 provider_opts(ecs, _Config) ->
   #{}.
+
+init_group(Provider, ProviderOpts, Context, Config) ->
+  application:set_env(aws_credentials, credential_providers, [Provider]),
+  application:set_env(aws_credentials, provider_options, ProviderOpts),
+  {ok, Started} = application:ensure_all_started(aws_credentials),
+  [{started, Started}, {context, Context}|Config].
 
 group_name(Config) ->
   GroupProperties = ?config(tc_group_properties, Config),

@@ -25,28 +25,49 @@
 -spec fetch(aws_credentials_provider:options()) ->
         {error, any()} | {ok, aws_credentials:credentials(), 'infinity'}.
 fetch(Options) ->
-    case does_credentials_file_exist(Options) of
+    FilePath = get_file_path(Options),
+    ConfigPath = does_credentials_file_exist(FilePath, "config"),
+    case does_credentials_file_exist(FilePath, "credentials") of
         {error, Error} ->
             {error, {credentials_file_does_not_exist, Error}};
-        Path ->
-            parse_file(Path, Options)
+        CredentialsPath ->
+            CredFile = parse_credentials_file(CredentialsPath, Options),
+            maybe_add_region(CredFile, ConfigPath, Options)
     end.
 
--spec does_credentials_file_exist(aws_credentials_provider:options()) ->
-        {error, any()} | string().
-does_credentials_file_exist(Options) ->
-    case maybe_add_home(maps:get(credential_path, Options, "/.aws/credentials")) of
-        {error, _} = Error -> Error;
-        Path -> check_path_exists(Path)
-    end.
+-spec does_credentials_file_exist(string(), string()) -> {error, any()} | string().
+does_credentials_file_exist({error, _} = Error, _FileName) -> Error;
+does_credentials_file_exist(Path, FileName) ->
+    check_path_exists(Path ++ FileName).
+
+-spec get_file_path(aws_credentials_provider:options()) -> {error, any()} | string().
+get_file_path(Options) ->
+  case maps:get(credential_path, Options, undefined) of
+    undefined -> maybe_add_home("/.aws/");
+    Path -> Path
+  end.
 
 -spec maybe_add_home(string()) -> string() | {error, any()}.
-maybe_add_home("/.aws/credentials") ->
+maybe_add_home(Path) ->
     case os:getenv("HOME") of
         false -> {error, could_not_get_home_directory_from_os_environment};
-        Home -> Home ++ "/.aws/credentials"
-    end;
-maybe_add_home(Other) -> Other.
+        Home -> Home ++ Path
+    end.
+
+-spec maybe_add_region(
+        {error, any()} | {ok, aws_credentials:credentials(), 'infinity'},
+        {error, any()} | string(),
+        aws_credentials_provider:options()
+      ) -> {ok, aws_credentials:credentials(), 'infinity'}.
+maybe_add_region({error, _} = Error, _Config, _Options) -> Error;
+maybe_add_region(Result, {error, _Error}, _Options) -> Result;
+maybe_add_region({ok, Credentials, infinity}, ConfigPath, Options) ->
+    case parse_config_file(ConfigPath, Options) of
+        {ok, Config} ->
+            {ok, maps:put(region, maps:get(<<"region">>, Config), Credentials), infinity};
+        {error, _} ->
+            {ok, Credentials, infinity}
+    end.
 
 -spec check_path_exists(string()) -> {error, 'file_not_found'} | string().
 check_path_exists(Path) ->
@@ -55,9 +76,9 @@ check_path_exists(Path) ->
       true -> Path
     end.
 
--spec parse_file(string(), aws_credentials_provider:options()) ->
+-spec parse_credentials_file(string(), aws_credentials_provider:options()) ->
         {error, any()} | {ok, aws_credentials:credentials(), 'infinity'}.
-parse_file(Path, Options) ->
+parse_credentials_file(Path, Options) ->
     {ok, F} = file:read_file(Path),
     {ok, Profiles} = eini:parse(F),
     Desired = maps:get(profile, Options, <<"default">>),
@@ -68,4 +89,16 @@ parse_file(Path, Options) ->
             {ok, aws_credentials:make_map(?MODULE,
                                           maps:get(<<"aws_access_key_id">>, Profile),
                                           maps:get(<<"aws_secret_access_key">>, Profile)), infinity}
+    end.
+
+-spec parse_config_file(string(), aws_credentials_provider:options()) ->
+        {error, any()} | {ok, aws_credentials:credentials()}.
+parse_config_file(Path, Options) ->
+    {ok, F} = file:read_file(Path),
+    {ok, Profiles} = eini:parse(F),
+    Desired = maps:get(profile, Options, <<"default">>),
+
+    case maps:get(Desired, Profiles, false) of
+        false -> {error, {desired_profile_not_found, Desired}};
+        Profile -> {ok, Profile}
     end.
