@@ -1,18 +1,29 @@
-%% @doc This provider reads the credentials file for the amazon
+%% @doc This provider reads the credentials and config files for the Amazon
 %% CLI tools. <a href="https://docs.aws.amazon.com/cli/latest/userguide/cli-config-files.html">
 %% This format is documented here</a> but an example might look
 %% like:
 %%
+%% `~/.aws/credentials'
+%%
 %% <pre>
 %% [default]
-%% aws_access_key_id=AKIAIOSFODNN7EXAMPLE
-%% aws_secret_access_key=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+%% aws_access_key_id = AKIAIOSFODNN7EXAMPLE
+%% aws_secret_access_key = wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+%% aws_session_token = wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLETOKEN
+%% </pre>
+%%
+%% `~/.aws/config'
+%%
+%% <pre>
+%% [default]
+%% region = us-east-1
 %% </pre>
 %%
 %% Environment parameters:
 %% <ul>
-%%   <li> &lt;&lt;"credentials_path"&gt;&gt; - this is the path to the CLI configuration file.
-%%   By default this is `~/.aws/credentials'</li>
+%%   <li> &lt;&lt;"credentials_path"&gt;&gt; - this is the base path to the both CLI configuration files.
+%%   And based on this path, credentials file should exist and config file is optional.
+%%   By default this is `~/.aws/'</li>
 %%   <li> &lt;&lt;"profile"&gt;&gt; - this is the desired profile to use in the credentials file.
 %%   By default this is &lt;&lt;"default"&gt;&gt;</li>
 %% </ul>
