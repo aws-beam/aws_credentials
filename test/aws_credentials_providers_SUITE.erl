@@ -64,7 +64,7 @@ init_per_group(GroupName, Config) ->
   case GroupName of
     config_credential -> init_group(config_credential, provider(file), config_credential, Config);
     config_env -> init_group(config_env, provider(file), file, Config);
-    credential_env -> init_group(credential_env, provider(file), file, Config);
+    credential_env -> init_group(credential_env, provider(file), credential_env, Config);
     profile_env -> init_group(profile_env, provider(file), config_credential, Config);
     GroupName -> init_group(GroupName, Config)
   end.
@@ -137,6 +137,8 @@ provider_opts(file, Config) ->
   #{credential_path => ?config(data_dir, Config)};
 provider_opts(config_credential, Config) ->
   #{credential_path => ?config(data_dir, Config) ++ "config_credential/"};
+provider_opts(credential_env, _Config) ->
+  #{credential_path => os:getenv("HOME")};
 provider_opts(_GroupName, _Config) ->
   #{}.
 

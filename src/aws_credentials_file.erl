@@ -58,7 +58,8 @@ maybe_path_from_env(EnvVar, FilePath) ->
     case {os:getenv(EnvVar), FilePath} of
         {false, {error, _} = Error} -> Error;
         {false, Path} -> Path;
-        {EnvPath, _} -> check_path_exists(EnvPath)
+        {EnvPath, {error, _}} -> check_path_exists(EnvPath);
+        {_, Path} -> Path
     end.
 
 -spec get_file_path(aws_credentials_provider:options()) -> {error, any()} | string().
@@ -142,5 +143,6 @@ desired_profile(Options) ->
     case {os:getenv("AWS_PROFILE"), maps:get(profile, Options, undefined)} of
         {false, undefined} -> <<"default">>;
         {false, Profile} -> Profile;
-        {AwsProfile, undefined} -> list_to_binary(AwsProfile)
+        {AwsProfile, undefined} -> list_to_binary(AwsProfile);
+        {_, Profile} -> Profile
     end.
