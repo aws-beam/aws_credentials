@@ -1,7 +1,12 @@
+[![Actions Status](https://github.com/aws-beam/aws_credentials/workflows/Build/badge.svg)](https://github.com/aws-beam/aws_credentials/actions)
+[![Module Version](https://img.shields.io/hexpm/v/aws_credentials.svg)](https://hex.pm/packages/aws_credentials)
+[![Total Download](https://img.shields.io/hexpm/dt/aws_credentials.svg)](https://hex.pm/packages/aws_credentials)
+[![License](https://img.shields.io/hexpm/l/aws_credentials.svg)](https://github.com/aws-beam/aws_credentials/blob/master/LICENSE.md)
+[![Last Updated](https://img.shields.io/github/last-commit/aws-beam/aws_credentials.svg)](https://github.com/aws-beam/aws_credentials/commits/master)
+
 aws_credentials
 ===============
 
-[![Actions Status](https://github.com/aws-beam/aws_credentials/workflows/Build/badge.svg)](https://github.com/aws-beam/aws_credentials/actions)
 
 This is a library to retrieve AWS credentials from a variety of possible
 sources in the following default order:
