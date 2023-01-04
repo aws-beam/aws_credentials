@@ -206,8 +206,12 @@ setup_provider(profile_env, _Config) ->
    , env => [{"AWS_PROFILE", Old}]
    };
 setup_provider(application_env, _Config) ->
-  application:set_env(aws_credentials, aws_access_key_id, binary_to_list(?DUMMY_ACCESS_KEY)),
-  application:set_env(aws_credentials, aws_secret_access_key, binary_to_list(?DUMMY_SECRET_ACCESS_KEY)),
+  application:set_env(aws_credentials
+                     , aws_access_key_id
+                     , binary_to_list(?DUMMY_ACCESS_KEY)),
+  application:set_env(aws_credentials
+                     , aws_secret_access_key
+                     , binary_to_list(?DUMMY_SECRET_ACCESS_KEY)),
   #{ mocks => []
    , env => []
    };
