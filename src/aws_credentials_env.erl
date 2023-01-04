@@ -72,10 +72,7 @@ os_getenv(Var) when is_list(Var) ->
 -spec erlang_get_env(string()) -> any().
 erlang_get_env(Var) when is_list(Var) ->
     Atom = make_env_var(string:to_lower(Var)),
-    case application:get_env(aws_credentials, Atom, undefined) of
-        undefined -> undefined;
-        {ok, Value} -> Value
-    end.
+    application:get_env(aws_credentials, Atom, undefined).
 
 -spec make_env_var([string()]) -> atom().
 make_env_var(Var) when is_list(Var) -> list_to_atom(Var).

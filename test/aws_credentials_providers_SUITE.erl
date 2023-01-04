@@ -33,6 +33,7 @@ all() ->
   , {group, profile_env}
   , {group, ec2}
   , {group, env}
+  , {group, application_env}
   , {group, ecs}
   ].
 
@@ -44,6 +45,7 @@ groups() ->
   , {profile_env, [], all_testcases()}
   , {ec2, [], all_testcases()}
   , {env, [], all_testcases()}
+  , {application_env, [], all_testcases()}
   , {ecs, [], all_testcases()}
   ].
 
@@ -66,6 +68,7 @@ init_per_group(GroupName, Config) ->
     config_env -> init_group(config_env, provider(file), file, Config);
     credential_env -> init_group(credential_env, provider(file), credential_env, Config);
     profile_env -> init_group(profile_env, provider(file), config_credential, Config);
+    application_env -> init_group(application_env, provider(env), application_env, Config);
     GroupName -> init_group(GroupName, Config)
   end.
 
@@ -99,6 +102,9 @@ assert_test(config_credential) ->
 assert_test(config_env) ->
   Provider = provider(file),
   assert_values(?DUMMY_ACCESS_KEY, ?DUMMY_SECRET_ACCESS_KEY, Provider, ?DUMMY_REGION2);
+assert_test(application_env) ->
+  Provider = provider(env),
+  assert_values(?DUMMY_ACCESS_KEY, ?DUMMY_SECRET_ACCESS_KEY, Provider);
 assert_test(credential_env) ->
   Provider = provider(file),
   assert_values(?DUMMY_ACCESS_KEY2, ?DUMMY_SECRET_ACCESS_KEY2, Provider);
@@ -198,6 +204,12 @@ setup_provider(profile_env, _Config) ->
   os:putenv("AWS_PROFILE", "foo"),
   #{ mocks => []
    , env => [{"AWS_PROFILE", Old}]
+   };
+setup_provider(application_env, _Config) ->
+  application:set_env(aws_credentials, aws_access_key_id, binary_to_list(?DUMMY_ACCESS_KEY)),
+  application:set_env(aws_credentials, aws_secret_access_key, binary_to_list(?DUMMY_SECRET_ACCESS_KEY)),
+  #{ mocks => []
+   , env => []
    };
 setup_provider(_GroupName, _Config) ->
   #{ mocks => []
