@@ -4,7 +4,7 @@
 -behaviour(aws_credentials_provider).
 
 -define(SESSION_TOKEN_URL,
-        "http://169.254.169.254/latest/api/token/").
+        "http://169.254.169.254/latest/api/token").
 -define(SESSION_TOKEN_TTL_HEADER,
         "x-aws-ec2-metadata-token-ttl-seconds").
 -define(SESSION_TOKEN_TTL_SECONDS,

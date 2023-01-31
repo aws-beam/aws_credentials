@@ -229,7 +229,7 @@ teardown_provider(Context) ->
 mock_httpc_request_ec2(Method, Request, HTTPOptions, Options, Profile) ->
   Headers = [{"X-aws-ec2-metadata-token", ?DUMMY_SESSION_TOKEN}],
   case Request of
-    {"http://169.254.169.254/latest/api/token/", _Headers} ->
+    {"http://169.254.169.254/latest/api/token", _Headers} ->
       {ok, response('session-token')};
     {"http://169.254.169.254/latest/meta-data/iam/security-credentials/", Headers} ->
       {ok, response('security-credentials')};
