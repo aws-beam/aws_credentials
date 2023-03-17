@@ -35,6 +35,7 @@
         , make_map/3
         , make_map/4
         , make_map/5
+        , log_error/3
         ]).
 
 -record(state, { credentials = undefined :: map()
@@ -167,6 +168,13 @@ format_status(_, [_PDict, State]) ->
 %% Internal functions
 %%====================================================================
 
+-spec log_error(String :: unicode:chardata(), Args :: [term()], logger:metadata()) -> ok.
+log_error(String, Args, Metadata) ->
+    case application:get_env(aws_credentials, log_errors_immediately, true) of
+        true -> ?LOG_ERROR(String, Args, Metadata);
+        false -> ?LOG_INFO(String, Args, Metadata)
+    end.
+
 -spec fetch_credentials(aws_credentials_provider:options()) ->
         {ok, credentials() | 'undefined', reference() | 'undefined'}.
 fetch_credentials(Options) ->
@@ -179,6 +187,12 @@ fetch_credentials(Options) ->
             ?LOG_INFO("No credentials available~n",
                       [],
                       #{domain => [aws_credentials]}),
+            {ok, undefined, setup_callback(?RETRY_DELAY)};
+          {error, ErrorLog} when is_list(ErrorLog) andalso ShouldCatch ->
+            ?LOG_INFO("No credentials available~n",
+                      [],
+                      #{domain => [aws_credentials]}),
+            [?LOG_ERROR(String, Args, Metadata) || {String, Args, Metadata} <- ErrorLog],
             {ok, undefined, setup_callback(?RETRY_DELAY)}
     catch E:R:ST when ShouldCatch ->
             ?LOG_INFO("aws_credentials ignoring exception ~p:~p (~p)~n",
