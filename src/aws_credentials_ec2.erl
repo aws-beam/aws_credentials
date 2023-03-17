@@ -56,7 +56,7 @@ request_headers({error, _Error} = Error) -> Error;
 request_headers({ok, SessionToken}) ->
   SessionTokenString = binary:bin_to_list(SessionToken),
   RequestHeaders = [{?SESSION_TOKEN_HEADER, SessionTokenString}],
-    {ok, RequestHeaders}.
+  {ok, RequestHeaders}.
 
 -spec fetch_role({error, _}
                | {ok, request_headers()}) ->
@@ -76,10 +76,10 @@ fetch_role({ok, RequestHeaders}) ->
                    | {ok, request_headers()}) ->
         {error, ec2_metadata_unavailable}
       | {error, _}
-      | {ok, {AccessKeyID :: binary(),
-              SecretAccessKey :: binary(),
-              ExpirationTime :: binary(),
-              Token :: binary()}}.
+      | {ok, {aws_credentials:access_key_id(),
+              aws_credentials:secret_access_key(),
+              aws_credentials_provider:expiration(),
+              aws_credentials:token()}}.
 fetch_metadata({error, _Error} = Error, _RequestHeadersR) -> Error;
 fetch_metadata(_RoleR, {error, _Error} = Error) -> Error;
 fetch_metadata({ok, Role}, {ok, RequestHeaders}) ->
@@ -88,9 +88,9 @@ fetch_metadata({ok, Role}, {ok, RequestHeaders}) ->
       {ok, 200, Body, _Headers} ->
         Map = jsx:decode(Body),
         {ok, {maps:get(<<"AccessKeyId">>, Map),
-         maps:get(<<"SecretAccessKey">>, Map),
-         maps:get(<<"Expiration">>, Map),
-         maps:get(<<"Token">>, Map)}};
+              maps:get(<<"SecretAccessKey">>, Map),
+              maps:get(<<"Expiration">>, Map),
+              maps:get(<<"Token">>, Map)}};
        _Other -> {error, ec2_metadata_unavailable}
      end.
 
@@ -98,7 +98,7 @@ fetch_metadata({ok, Role}, {ok, RequestHeaders}) ->
                    | {ok, request_headers()}) ->
         {error, ec2_document_unavailable}
       | {error, _}
-      | {ok, binary()}.
+      | {ok, aws_credentials:region()}.
 fetch_document({error, _Error} = Error) -> Error;
 fetch_document({ok, RequestHeaders}) ->
     case aws_credentials_httpc:request(get, ?DOCUMENT_URL, RequestHeaders) of
@@ -110,14 +110,14 @@ fetch_document({ok, RequestHeaders}) ->
     end.
 
 -spec make_map({error, _}
-             | {ok, {AccessKeyID :: binary(),
-                     SecretAccessKey :: binary(),
-                     ExpirationTime :: binary(),
-                     Token :: binary()}},
+             | {ok, {aws_credentials:access_key_id(),
+                     aws_credentials:secret_access_key(),
+                     aws_credentials_provider:expiration(),
+                     aws_credentials:token()}},
                {error, _}
-             | {ok, Region :: binary()}) ->
+             | {ok, aws_credentials:region()}) ->
         {error, _}
-      | {ok, aws_credentials:credentials(), ExpirationTime :: binary()}.
+      | {ok, aws_credentials:credentials(), aws_credentials_provider:expiration()}.
 make_map({error, _Error} = Error, _DocumentR) -> Error;
 make_map(_MetadataR, {error, _Error} = Error) -> Error;
 make_map({ok, {AccessKeyID, SecretAccessKey, ExpirationTime, Token}}, {ok, Region}) ->
