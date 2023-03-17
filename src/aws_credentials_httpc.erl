@@ -28,6 +28,11 @@
 -type reason_phrase() :: string().
 -type url() :: string().
 -type method() :: atom().
+-type response_error() :: any().
+-type headers() :: [header()].
+-type response() :: {'error', response_error()} | {'ok', status_code(), body(), headers()}.
+
+-export_type([response/0, response_error/0, status_code/0, body/0, headers/0]).
 
 -spec start() -> ok.
 
@@ -37,12 +42,11 @@ start() ->
     inets:start(httpc, [{profile, ?PROFILE}]).
 
 %% @doc Attempt to request a URL with the 3 retries. 3 is the default.
--spec request(method(), url()) -> {'error', any()} | {'ok', status_code(), body(), [header()]}.
+-spec request(method(), url()) -> response().
 request(Method, URL) ->
   request(Method, URL, ?DEFAULT_HEADERS, ?DEFAULT_TRIES).
 
--spec request(method(), url(), [header()]) ->
-  {'error', any()} | {'ok', status_code(), body(), [header()]}.
+-spec request(method(), url(), [header()]) -> response().
 request(Method, URL, RequestHeaders) ->
   request(Method, URL, RequestHeaders, ?DEFAULT_TRIES).
 
@@ -54,16 +58,14 @@ request(Method, URL, RequestHeaders) ->
 %% successfully get the desired data. That is, it will return an
 %% ok tuple with a status code of 500 or 404 or some other HTTP error
 %% code and no data.
--spec request(method(), url(), [header()], pos_integer() ) ->
-  {ok, status_code(), body(), [header()]} | {error, any()}.
+-spec request(method(), url(), [header()], pos_integer() ) -> response().
 request(Method, URL, RequestHeaders, Tries) when is_atom(Method)
                      andalso is_list(URL)
                      andalso is_integer(Tries)
                      andalso Tries > 0 ->
   request(Method, URL, RequestHeaders, Tries, Tries, []).
 
--spec request(method(), url(), [header()], pos_integer(), pos_integer(), any()) ->
-        {ok, status_code(), body(), [header()]} | {error, any()}.
+-spec request(method(), url(), [header()], pos_integer(), pos_integer(), any()) -> response().
 request(_Method, _URL, _RequestHeaders, _Tries, 0, Errs) -> {error, lists:reverse(Errs)};
 request(Method, URL, RequestHeaders, Tries, Remaining, Errs) ->
     case make_request(Method, URL, RequestHeaders) of

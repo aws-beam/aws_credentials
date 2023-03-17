@@ -23,6 +23,12 @@
 -type request_header() :: {field(), value()}.
 -type request_headers() :: [request_header()].
 
+-type non_200(Tag) :: {Tag, {non_200,
+                             aws_credentials_httpc:status_code(),
+                             aws_credentials_httpc:body(),
+                             aws_credentials_httpc:headers()}}
+                    | {Tag, aws_credentials_httpc:response_error()}.
+
 -export([fetch/1]).
 
 -spec fetch(aws_credentials_provider:options()) ->
@@ -39,13 +45,13 @@ fetch(_Options) ->
     make_map(MetadataR, DocumentR).
 
 -spec fetch_session_token() ->
-        {error, ec2_session_token_unavailable}
+        {error, non_200(ec2_session_token_unavailable)}
       | {ok, session_token()}.
 fetch_session_token() ->
   RequestHeaders = [{?SESSION_TOKEN_TTL_HEADER, ?SESSION_TOKEN_TTL_SECONDS}],
   case aws_credentials_httpc:request(put, ?SESSION_TOKEN_URL, RequestHeaders) of
     {ok, 200, Body, _Headers} -> {ok, Body};
-    _Other -> {error, ec2_session_token_unavailable}
+    Other -> {error, non_200(ec2_session_token_unavailable, Other)}
   end.
 
 -spec request_headers({error, _}
@@ -60,21 +66,21 @@ request_headers({ok, SessionToken}) ->
 
 -spec fetch_role({error, _}
                | {ok, request_headers()}) ->
-        {error, ec2_role_unavailable}
+        {error, non_200(ec2_role_unavailable)}
       | {error, _}
       | {ok, role()}.
 fetch_role({error, _Error} = Error) -> Error;
 fetch_role({ok, RequestHeaders}) ->
     case aws_credentials_httpc:request(get, ?CREDENTIAL_URL, RequestHeaders) of
       {ok, 200, Body, _Headers} -> {ok, Body};
-      _Other -> {error, ec2_role_unavailable}
+      Other -> {error, non_200(ec2_role_unavailable, Other)}
     end.
 
 -spec fetch_metadata({error, _}
                    | {ok, role()},
                      {error, _}
                    | {ok, request_headers()}) ->
-        {error, ec2_metadata_unavailable}
+        {error, non_200(ec2_metadata_unavailable)}
       | {error, _}
       | {ok, {aws_credentials:access_key_id(),
               aws_credentials:secret_access_key(),
@@ -91,12 +97,12 @@ fetch_metadata({ok, Role}, {ok, RequestHeaders}) ->
               maps:get(<<"SecretAccessKey">>, Map),
               maps:get(<<"Expiration">>, Map),
               maps:get(<<"Token">>, Map)}};
-       _Other -> {error, ec2_metadata_unavailable}
+       Other -> {error, non_200(ec2_metadata_unavailable, Other)}
      end.
 
 -spec fetch_document({error, _}
                    | {ok, request_headers()}) ->
-        {error, ec2_document_unavailable}
+        {error, non_200(ec2_document_unavailable)}
       | {error, _}
       | {ok, aws_credentials:region()}.
 fetch_document({error, _Error} = Error) -> Error;
@@ -105,8 +111,7 @@ fetch_document({ok, RequestHeaders}) ->
       {ok, 200, Body, _Headers} ->
         Map = jsx:decode(Body),
         {ok, maps:get(<<"region">>, Map)};
-      _Other ->
-        {error, ec2_document_unavailable}
+      Other -> {error, non_200(ec2_document_unavailable, Other)}
     end.
 
 -spec make_map({error, _}
@@ -123,3 +128,9 @@ make_map(_MetadataR, {error, _Error} = Error) -> Error;
 make_map({ok, {AccessKeyID, SecretAccessKey, ExpirationTime, Token}}, {ok, Region}) ->
   Credentials = aws_credentials:make_map(?MODULE, AccessKeyID, SecretAccessKey, Token, Region),
   {ok, Credentials, ExpirationTime}.
+
+-spec non_200(Tag, aws_credentials_httpc:response()) -> non_200(Tag).
+non_200(Tag, {ok, StatusCode, Body, Headers}) ->
+  {Tag, {non_200, StatusCode, Body, Headers}};
+non_200(Tag, {error, Error}) ->
+  {Tag, Error}.
