@@ -33,7 +33,7 @@
 
 -spec fetch(aws_credentials_provider:options()) ->
         {error, _}
-      | {ok, aws_credentials_provider:credentials(), aws_credentials_provider:expiration()}.
+      | {ok, aws_credentials:credentials(), aws_credentials_provider:expiration()}.
 fetch(_Options) ->
     % Fetch the IMDS session token and convert it to the request headers.
     % Then pass the request headers to subsequent IMDS requests.
