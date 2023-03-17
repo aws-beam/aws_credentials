@@ -93,6 +93,18 @@ Different credential providers may have other settings which you can use to
 change their behaviors.  See the documentation for each provider for more
 details.
 
+Error Logging
+-------------
+
+If you prefer to not log errors as they happen (the default behavior), but accumulate
+them for later, you can set erlang environment variable `log_errors_immediately` to
+`false` as in this example:
+
+```erlang
+  {aws_credentials, [{log_errors_immediately, false}]
+  },
+```
+
 License and copyright
 ---------------------
 This project is licensed under the terms of the Apache 2 license. It is a

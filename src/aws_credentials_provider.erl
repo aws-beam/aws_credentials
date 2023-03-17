@@ -35,6 +35,8 @@
                   | aws_credentials_file
                   | aws_credentials_ecs
                   | aws_credentials_ec2.
+-type error_log_elem() :: {String :: unicode:chardata(), Args :: [term()], logger:metadata()}.
+-type error_log() :: [error_log_elem()].
 -export_type([ options/0, expiration/0 ]).
 
 -callback fetch(options()) ->
@@ -49,28 +51,35 @@
 
 -spec fetch() ->
         {ok, aws_credentials:credentials(), expiration()} |
-        {'error', 'no_credentials'}.
+        {'error', 'no_credentials'} |
+        {'error', error_log()}.
 fetch() ->
     fetch(#{}).
 
 -spec fetch(options()) ->
         {ok, aws_credentials:credentials(), expiration()} |
-        {'error', 'no_credentials'}.
+        {'error', 'no_credentials'} |
+        {'error', error_log()}.
 fetch(Options) ->
     Providers = get_env(credential_providers, ?DEFAULT_PROVIDERS),
-    evaluate_providers(Providers, Options).
+    evaluate_providers(Providers, Options, []).
 
--spec evaluate_providers([provider() | {provider(), options()}], options()) ->
+-spec evaluate_providers([provider() | {provider(), options()}], options(), error_log()) ->
         {ok, aws_credentials:credentials(), expiration()} |
-        {'error', no_credentials}.
-evaluate_providers([], _Options) -> {error, no_credentials};
-evaluate_providers([ Provider | Providers ], Options) ->
+        {'error', no_credentials} |
+        {'error', error_log()}.
+evaluate_providers([], _Options, []) ->
+    {error, no_credentials};
+evaluate_providers([], _Options, Errors) when is_list(Errors) ->
+    {error, lists:reverse(Errors)};
+evaluate_providers([ Provider | Providers ], Options, Errors) ->
     case Provider:fetch(Options) of
         {error, _} = Error ->
-            ?LOG_ERROR("Provider ~p reports ~p",
-                       [Provider, Error],
-                       #{domain => [aws_credentials]}),
-            evaluate_providers(Providers, Options);
+            String = "Provider ~p reports ~p",
+            Args = [Provider, Error],
+            Metadata = #{domain => [aws_credentials]},
+            aws_credentials:log_error(String, Args, Metadata),
+            evaluate_providers(Providers, Options, [{String, Args, Metadata} | Errors]);
         {ok, Credentials, Expiration} ->
             {ok, Credentials, Expiration}
     end.
