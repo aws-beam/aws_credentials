@@ -26,7 +26,7 @@
 -export([fetch/1]).
 
 -spec fetch(_) ->
-        {'ok', _, 'infinity'} |
+        {'ok', aws_credentials:credentials(), 'infinity'} |
         {error, 'environment_credentials_unavailable'}.
 fetch(_Options) ->
     case {get_env(?AWS_ACCESS), get_env(?AWS_SECRET),

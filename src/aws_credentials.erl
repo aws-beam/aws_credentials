@@ -57,6 +57,8 @@
 -type token() :: binary().
 -type region() :: binary().
 
+-export_type([access_key_id/0, secret_access_key/0, token/0, region/0, credentials/0]).
+
 %%====================================================================
 %% API
 %%====================================================================

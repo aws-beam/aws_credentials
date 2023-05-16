@@ -37,7 +37,7 @@
                   | aws_credentials_ec2.
 -type error_log_elem() :: {String :: unicode:chardata(), Args :: [term()], logger:metadata()}.
 -type error_log() :: [error_log_elem()].
--export_type([ options/0, expiration/0 ]).
+-export_type([ options/0, expiration/0, provider/0 ]).
 
 -callback fetch(options()) ->
   {ok, aws_credentials:credentials(), expiration()} | {error, any()}.

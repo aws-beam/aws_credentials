@@ -6,7 +6,7 @@
 -export([fetch/1]).
 
 -spec fetch(any()) ->
-        {ok, aws_credentials_provider:credentials(), aws_credentials_provider:expiration()} |
+        {ok, aws_credentials:credentials(), aws_credentials_provider:expiration()} |
         {error, any()}.
 fetch(_Options) ->
   RelativeUri = os:getenv("AWS_CONTAINER_CREDENTIALS_RELATIVE_URI"),
