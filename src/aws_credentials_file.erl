@@ -124,7 +124,7 @@ parse_credentials_file(Path, Options) ->
     end.
 
 -spec parse_config_file(string(), aws_credentials_provider:options()) ->
-        {error, any()} | {ok, aws_credentials:credentials()}.
+        {error, any()} | {ok, map()}.
 parse_config_file(Path, Options) ->
     {ok, F} = file:read_file(Path),
     {ok, Profiles} = eini:parse(F),
