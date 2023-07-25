@@ -23,6 +23,9 @@ jobs:
       - name: Run EUnit Tests
         run: rebar3 eunit
 
+      - name: Generate docs
+        run: rebar3 ex_doc
+
       - uses: ncipollo/release-action@v1
         with:
           generateReleaseNotes: true
