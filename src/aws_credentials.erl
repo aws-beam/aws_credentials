@@ -35,7 +35,6 @@
         , make_map/3
         , make_map/4
         , make_map/5
-        , log_error/3
         ]).
 
 -record(state, { credentials = undefined :: map()
@@ -169,13 +168,6 @@ format_status(_, [_PDict, State]) ->
 %%====================================================================
 %% Internal functions
 %%====================================================================
-
--spec log_error(String :: unicode:chardata(), Args :: [term()], logger:metadata()) -> ok.
-log_error(String, Args, Metadata) ->
-    case application:get_env(aws_credentials, log_errors_immediately, true) of
-        true -> ?LOG_ERROR(String, Args, Metadata);
-        false -> ?LOG_INFO(String, Args, Metadata)
-    end.
 
 -spec fetch_credentials(aws_credentials_provider:options()) ->
         {ok, credentials() | 'undefined', reference() | 'undefined'}.
