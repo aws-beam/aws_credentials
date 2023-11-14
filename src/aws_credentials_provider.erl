@@ -75,11 +75,7 @@ evaluate_providers([], _Options, Errors) when is_list(Errors) ->
 evaluate_providers([ Provider | Providers ], Options, Errors) ->
     case Provider:fetch(Options) of
         {error, _} = Error ->
-            String = "Provider ~p reports ~p",
-            Args = [Provider, Error],
-            Metadata = #{domain => [aws_credentials]},
-            aws_credentials:log_error(String, Args, Metadata),
-            evaluate_providers(Providers, Options, [{String, Args, Metadata} | Errors]);
+            evaluate_providers(Providers, Options, [{Provider, Error} | Errors]);
         {ok, Credentials, Expiration} ->
             {ok, Credentials, Expiration}
     end.

@@ -185,23 +185,26 @@ fetch_credentials(Options) ->
           {ok, Credentials, ExpirationTime} ->
             Tref = setup_update_callback(ExpirationTime),
             {ok, Credentials, Tref};
-          {error, 'no_credentials'} when ShouldCatch ->
+          {error, 'no_credentials'} ->
             ?LOG_INFO("No credentials available~n",
                       [],
                       #{domain => [aws_credentials]}),
-            {ok, undefined, setup_callback(?RETRY_DELAY)};
-          {error, ErrorLog} when is_list(ErrorLog) andalso ShouldCatch ->
-            ?LOG_INFO("No credentials available~n",
-                      [],
-                      #{domain => [aws_credentials]}),
-            [?LOG_ERROR(String, Args, Metadata) || {String, Args, Metadata} <- ErrorLog],
-            {ok, undefined, setup_callback(?RETRY_DELAY)}
+            {ok, undefined_or_fail(ShouldCatch), setup_callback(?RETRY_DELAY)};
+          {error, ErrorLog} when is_list(ErrorLog) ->
+            Metadata = #{domain => [aws_credentials]},
+            ?LOG_INFO("No credentials available~n", [], Metadata),
+            [?LOG_ERROR("Provider ~p reports ~p", [Provider, Error], Metadata)
+             || {Provider, Error} <- ErrorLog],
+            {ok, undefined_or_fail(ShouldCatch), setup_callback(?RETRY_DELAY)}
     catch E:R:ST when ShouldCatch ->
             ?LOG_INFO("aws_credentials ignoring exception ~p:~p (~p)~n",
                       [E, R, ST],
                       #{domain => [aws_credentials]}),
             {ok, undefined, setup_callback(?RETRY_DELAY)}
     end.
+
+undefined_or_fail(true) -> true;
+undefined_or_fail(false) -> error(no_credentials).
 
 -spec setup_update_callback('infinity' | binary() | integer()) -> reference().
 setup_update_callback(infinity) -> ok;
