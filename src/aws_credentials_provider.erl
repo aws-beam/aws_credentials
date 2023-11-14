@@ -35,8 +35,7 @@
                   | aws_credentials_file
                   | aws_credentials_ecs
                   | aws_credentials_ec2.
--type error_log_elem() :: {String :: unicode:chardata(), Args :: [term()], logger:metadata()}.
--type error_log() :: [error_log_elem()].
+-type error_log() :: [{provider(), term()}].
 -export_type([ options/0, expiration/0, provider/0 ]).
 
 -callback fetch(options()) ->
@@ -75,11 +74,7 @@ evaluate_providers([], _Options, Errors) when is_list(Errors) ->
 evaluate_providers([ Provider | Providers ], Options, Errors) ->
     case Provider:fetch(Options) of
         {error, _} = Error ->
-            String = "Provider ~p reports ~p",
-            Args = [Provider, Error],
-            Metadata = #{domain => [aws_credentials]},
-            aws_credentials:log_error(String, Args, Metadata),
-            evaluate_providers(Providers, Options, [{String, Args, Metadata} | Errors]);
+            evaluate_providers(Providers, Options, [{Provider, Error} | Errors]);
         {ok, Credentials, Expiration} ->
             {ok, Credentials, Expiration}
     end.
