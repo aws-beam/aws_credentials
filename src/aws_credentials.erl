@@ -1,8 +1,6 @@
 %% @doc This is the main interface to the library. It provides a function
-%% `get_credentials/0' which should return `{ok, Credentials :: map()}' of
-%% credentials. If you set `fail_if_unavailable' to `false' in the Erlang
-%% environment then the application will return `{ok, unavailable}' and attempt
-%% to get credentials again after 5 seconds delay.
+%% `get_credentials/0' which should return `Credentials :: map()' or `undefined`.
+%% If undefined, it will attempt to get credentials again after 5 seconds delay.
 %% @end
 -module(aws_credentials).
 -behaviour(gen_server).
@@ -97,13 +95,13 @@ stop() ->
     gen_server:stop(?MODULE).
 
 %% @doc Get cached credential information.
--spec get_credentials() -> credentials().
+-spec get_credentials() -> credentials() | undefined.
 get_credentials() ->
     gen_server:call(?MODULE, get_credentials).
 
 %% @doc Force a credentials update (using the application environment
 %% options if any).
--spec force_credentials_refresh() -> credentials() | {error, any()}.
+-spec force_credentials_refresh() -> credentials() | undefined | {error, any()}.
 force_credentials_refresh() ->
     ProviderOptions = application:get_env(aws_credentials, provider_options, #{}),
     force_credentials_refresh(ProviderOptions).
@@ -111,7 +109,7 @@ force_credentials_refresh() ->
 %% @doc Force a credentials update, passing options (which possibly override
 %% the options set in the erlang environment.)
 -spec force_credentials_refresh(aws_credentials_provider:options()) ->
-        credentials() | {error, any()}.
+        credentials() | undefined | {error, any()}.
 force_credentials_refresh(Options) ->
     gen_server:call(?MODULE, {force_refresh, Options}).
 
@@ -180,7 +178,7 @@ log_error(String, Args, Metadata) ->
 -spec fetch_credentials(aws_credentials_provider:options()) ->
         {ok, credentials() | 'undefined', reference() | 'undefined'}.
 fetch_credentials(Options) ->
-    ShouldCatch = not application:get_env(aws_credentials, fail_if_unavailable, true),
+    ShouldCatch = not application:get_env(aws_credentials, fail_if_unavailable, false),
     try aws_credentials_provider:fetch(Options) of
           {ok, Credentials, ExpirationTime} ->
             Tref = setup_update_callback(ExpirationTime),
