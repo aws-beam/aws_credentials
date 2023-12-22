@@ -74,10 +74,10 @@ request(Method, URL, RequestHeaders, Tries, Remaining, Errs) ->
 
       Error ->
         NewRemaining = Remaining - 1,
-        String = "Error fetching URL (attempts left: ~p of ~p) ~p: ~p.",
-        Args = [NewRemaining, Tries, URL, Error],
-        Metadata = #{domain => [aws_credentials]},
-        aws_credentials:log_error(String, Args, Metadata),
+        ?LOG_INFO("Error fetching URL (attempts left: "
+                  "~p of ~p) ~p: ~p.",
+                  [NewRemaining, Tries, URL, Error],
+                  #{domain => [aws_credentials]}),
         timer:sleep((Tries - NewRemaining) * ?DELAY),
         request(Method, URL, RequestHeaders, Tries, NewRemaining, [ Error | Errs ])
     end.
