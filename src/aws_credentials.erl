@@ -1,5 +1,5 @@
 %% @doc This is the main interface to the library. It provides a function
-%% `get_credentials/0' which should return `Credentials :: map()' or `undefined`.
+%% `get_credentials/0' which should return `Credentials :: map()' or `undefined'.
 %% If undefined, it will attempt to get credentials again after 5 seconds delay.
 %% @end
 -module(aws_credentials).
