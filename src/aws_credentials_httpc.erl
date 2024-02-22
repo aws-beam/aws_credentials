@@ -84,8 +84,10 @@ request(Method, URL, RequestHeaders, Tries, Remaining, Errs) ->
 
 -spec make_request(method(), url(), [header()]) -> {ok, httpc_result()} | {error, any()}.
 make_request(Method, URL, RequestHeaders) ->
+    HttpOptions = [{timeout, ?TIMEOUT},
+                   {connect_timeout, ?CONNECT_TIMEOUT},
+                   {ssl, [{verify, verify_none}]}],
     httpc:request(Method, {URL, RequestHeaders},
-                  [{timeout, ?TIMEOUT},
-                   {connect_timeout, ?CONNECT_TIMEOUT}], % HTTP options
+                  HttpOptions,
                   [{body_format, binary}], % options
                   ?PROFILE).
