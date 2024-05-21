@@ -131,12 +131,15 @@ terminate(_Reason, _State) ->
 handle_call(get_credentials, _From, State=#state{credentials=C}) ->
     {reply, C, State};
 handle_call({force_refresh, Options}, _From, State=#state{tref=T}) ->
-    {ok, C, NewT} = fetch_credentials(Options),
+    Result = fetch_credentials(Options),
     case is_reference(T) of
         true -> erlang:cancel_timer(T);
         false -> ok
     end,
-    {reply, C, State#state{credentials=C, tref=NewT}};
+    case Result of
+        {ok, undefined, NewT} -> {reply, undefined, State#state{tref=NewT}};
+        {ok, C, NewT} -> {reply, C, State#state{credentials=C, tref=NewT}}
+    end;
 handle_call(Args, _From, State) ->
     ?LOG_WARNING("Unknown call: ~p~n", [Args], #{domain => [aws_credentials]}),
     {noreply, State}.
@@ -149,8 +152,10 @@ handle_cast(Message, State) ->
 -spec handle_info(any(), state()) -> {'noreply', state()}.
 handle_info(refresh_credentials, State) ->
     ProviderOptions = application:get_env(aws_credentials, provider_options, #{}),
-    {ok, C, T} = fetch_credentials(ProviderOptions),
-    {noreply, State#state{credentials=C, tref=T}};
+    case fetch_credentials(ProviderOptions) of
+        {ok, undefined, T} -> {noreply, State#state{tref=T}};
+        {ok, C, T} -> {noreply, State#state{credentials=C, tref=T}}
+    end;
 handle_info(Message, State) ->
     ?LOG_WARNING("Unknown message: ~p~n", [Message], #{domain => [aws_credentials]}),
     {noreply, State}.
@@ -193,7 +198,8 @@ fetch_credentials(Options) ->
             {ok, undefined, setup_callback(?RETRY_DELAY)}
     end.
 
-undefined_or_fail(true) -> true;
+-spec undefined_or_fail(boolean()) -> undefined | no_return().
+undefined_or_fail(true) -> undefined;
 undefined_or_fail(false) -> error(no_credentials).
 
 -spec setup_update_callback('infinity' | binary() | integer()) -> reference().
