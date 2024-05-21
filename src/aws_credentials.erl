@@ -131,15 +131,12 @@ terminate(_Reason, _State) ->
 handle_call(get_credentials, _From, State=#state{credentials=C}) ->
     {reply, C, State};
 handle_call({force_refresh, Options}, _From, State=#state{tref=T}) ->
-    Result = fetch_credentials(Options),
+    {ok, C, NewT} = fetch_credentials(Options),
     case is_reference(T) of
         true -> erlang:cancel_timer(T);
         false -> ok
     end,
-    case Result of
-        {ok, undefined, NewT} -> {reply, undefined, State#state{tref=NewT}};
-        {ok, C, NewT} -> {reply, C, State#state{credentials=C, tref=NewT}}
-    end;
+    {reply, C, State#state{credentials=C, tref=NewT}};
 handle_call(Args, _From, State) ->
     ?LOG_WARNING("Unknown call: ~p~n", [Args], #{domain => [aws_credentials]}),
     {noreply, State}.
