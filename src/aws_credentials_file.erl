@@ -135,7 +135,29 @@ parse_config_file(Path, Options) ->
 read_from_profile(File, Profile) ->
     case maps:get(Profile, File, undefined) of
         undefined -> {error, {desired_profile_not_found, Profile}};
-        Map -> {ok, Map}
+        Map ->
+            case maps:is_key(<<"credential_process">>, Map) of
+                true ->
+                    % Source credentials with an external process
+                    % https://docs.aws.amazon.com/cli/v1/userguide/cli-configure-sourcing-external.html
+                    Process = maps:get(<<"credential_process">>, Map),
+                    Stdout = os:cmd(binary_to_list(Process)),
+                    CredResult = jsx:decode(iolist_to_binary(Stdout)),
+                    CredsMap = maps:from_list(lists:filtermap(
+                        fun
+                            ({<<"AccessKeyId">>, AKI}) ->
+                                {true, {<<"aws_access_key_id">>, AKI}};
+                            ({<<"SecretAccessKey">>, SAK}) ->
+                                {true, {<<"aws_secret_access_key">>, SAK}};
+                            ({<<"SessionToken">>, ST}) ->
+                                {true, {<<"aws_session_token">>, ST}};
+                            (_) ->
+                                false
+                        end, maps:to_list(CredResult))),
+                    {ok, maps:merge(Map, CredsMap)};
+                false ->
+                    {ok, Map}
+            end
     end.
 
 -spec desired_profile(aws_credentials_provider:options()) -> binary().
