@@ -149,8 +149,10 @@ handle_cast(Message, State) ->
 -spec handle_info(any(), state()) -> {'noreply', state()}.
 handle_info(refresh_credentials, State) ->
     ProviderOptions = application:get_env(aws_credentials, provider_options, #{}),
-    {ok, C, T} = fetch_credentials(ProviderOptions),
-    {noreply, State#state{credentials=C, tref=T}};
+    case fetch_credentials(ProviderOptions) of
+        {ok, undefined, T} -> {noreply, State#state{tref=T}};
+        {ok, C, T} -> {noreply, State#state{credentials=C, tref=T}}
+    end;
 handle_info(Message, State) ->
     ?LOG_WARNING("Unknown message: ~p~n", [Message], #{domain => [aws_credentials]}),
     {noreply, State}.
@@ -193,7 +195,8 @@ fetch_credentials(Options) ->
             {ok, undefined, setup_callback(?RETRY_DELAY)}
     end.
 
-undefined_or_fail(true) -> true;
+-spec undefined_or_fail(boolean()) -> undefined | no_return().
+undefined_or_fail(true) -> undefined;
 undefined_or_fail(false) -> error(no_credentials).
 
 -spec setup_update_callback('infinity' | binary() | integer()) -> reference().
