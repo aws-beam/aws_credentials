@@ -33,8 +33,10 @@
 -type role_session_name() :: binary().
 -type web_identity_token_file() :: binary() | string().
 -type web_identity_token() :: binary().
+-export_type([region/0, role_arn/0, role_session_name/0, web_identity_token/0]).
 
--callback assume_role_with_web_identity(region(), role_arn(), role_session_name(), web_identity_token(), map()) ->
+-callback assume_role_with_web_identity(
+        region(), role_arn(), role_session_name(), web_identity_token(), map()) ->
     {ok, aws_credentials:credentials(), aws_credentials_provider:expiration()} | {error, any()}.
 
 -define(COMMAND_MAX_OUTPUT,
@@ -62,50 +64,48 @@ fetch(Options) ->
 
 -spec get_region(aws_credentials_provider:options()) -> {error, any()} | {ok, region()}.
 get_region(Options) ->
-    case {os:getenv("AWS_DEFAULT_REGION"), os:getenv("AWS_REGION"), maps:get(region, Options, undefined)} of
-        {_, _, Region} when is_binary(Region) ->
-            {ok, Region};
-        {_, AwsRegion, _} when is_list(AwsRegion) ->
-            {ok, list_to_binary(AwsRegion)};
-        {AwsDefaultRegion, _, _} when is_list(AwsDefaultRegion) ->
-            {ok, list_to_binary(AwsDefaultRegion)};
-        _ ->
-            {error, no_region}
+    RegionByOptions = maps:get(region, Options, undefined),
+    RegionByEnv = os:getenv("AWS_REGION"),
+    DefaultRegionByEnv = os:getenv("AWS_DEFAULT_REGION"),
+    case {RegionByOptions, RegionByEnv, DefaultRegionByEnv} of
+        _ when is_binary(RegionByOptions) -> {ok, RegionByOptions};
+        _ when is_list(RegionByEnv) -> {ok, list_to_binary(RegionByEnv)};
+        _ when is_list(DefaultRegionByEnv) -> {ok, list_to_binary(DefaultRegionByEnv)};
+        _ -> {error, no_region}
     end.
 
 -spec get_role_arn(aws_credentials_provider:options()) -> {error, any()} | {ok, role_arn()}.
 get_role_arn(Options) ->
-    case {os:getenv("AWS_ROLE_ARN"), maps:get(role_arn, Options, undefined)} of
-        {_, RoleArn} when is_binary(RoleArn) ->
-            {ok, RoleArn};
-        {AwsRoleArn, _} when is_list(AwsRoleArn) ->
-            {ok, list_to_binary(AwsRoleArn)};
-        _ ->
-            {error, no_role_arn}
+    RoleArnByOptions = maps:get(role_arn, Options, undefined),
+    RoleArnByEnv = os:getenv("AWS_ROLE_ARN"),
+    case {RoleArnByOptions, RoleArnByEnv} of
+        _ when is_binary(RoleArnByOptions) -> {ok, RoleArnByOptions};
+        _ when is_list(RoleArnByEnv) -> {ok, list_to_binary(RoleArnByEnv)};
+        _ -> {error, no_role_arn}
     end.
 
 -spec get_role_session_name(aws_credentials_provider:options()) -> {ok, role_session_name()}.
 get_role_session_name(Options) ->
-    case {os:getenv("AWS_ROLE_SESSION_NAME"), maps:get(role_session_name, Options, undefined)} of
-        {_, RoleSessionName} when is_binary(RoleSessionName) ->
-            {ok, RoleSessionName};
-        {AwsRoleSessionName, _} when is_list(AwsRoleSessionName) ->
-            {ok, list_to_binary(AwsRoleSessionName)};
+    RoleSessionNameByOptions = maps:get(role_session_name, Options, undefined),
+    RoleSessionNameByEnv = os:getenv("AWS_ROLE_SESSION_NAME"),
+    case {RoleSessionNameByOptions, RoleSessionNameByEnv} of
+        _ when is_binary(RoleSessionNameByOptions) -> {ok, RoleSessionNameByOptions};
+        _ when is_list(RoleSessionNameByEnv) -> {ok, list_to_binary(RoleSessionNameByEnv)};
         _ ->
             %% session name is used to uniquely identify a session.
             %% So simply use unix time in nanoseconds.
             {ok, integer_to_binary(erlang:system_time(nanosecond))}
     end.
 
--spec get_token_file(aws_credentials_provider:options()) -> {error, any()} | {ok, web_identity_token_file()}.
+-spec get_token_file(aws_credentials_provider:options()) ->
+    {error, any()} | {ok, web_identity_token_file()}.
 get_token_file(Options) ->
-    case {os:getenv("AWS_WEB_IDENTITY_TOKEN_FILE"), maps:get(web_identity_token_file, Options, undefined)} of
-        {_, File} when is_binary(File) ->
-            {ok, File};
-        {AwsFile, _} when is_list(AwsFile) ->
-            {ok, AwsFile};
-        _ ->
-            {error, no_web_identity_token_file}
+    TokenFileByOptions = maps:get(web_identity_token_file, Options, undefined),
+    TokenFileByEnv = os:getenv("AWS_WEB_IDENTITY_TOKEN_FILE"),
+    case {TokenFileByOptions, TokenFileByEnv} of
+        _ when is_binary(TokenFileByOptions) -> {ok, TokenFileByOptions};
+        _ when is_list(TokenFileByEnv) -> {ok, TokenFileByEnv};
+        _ -> {error, no_web_identity_token_file}
     end.
 
 -spec load_token_file(web_identity_token_file()) -> {error, any()} | {ok, web_identity_token()}.
@@ -119,7 +119,8 @@ load_token_file(TokenFile) ->
     end.
 
 %% default implementation of assume_role_with_web_identity callback
--spec assume_role_with_web_identity(region(), role_arn(), role_session_name(), web_identity_token(), map()) ->
+-spec assume_role_with_web_identity(
+        region(), role_arn(), role_session_name(), web_identity_token(), map()) ->
     {ok, aws_credentials:credentials(), aws_credentials_provider:expiration()} | {error, any()}.
 assume_role_with_web_identity(Region, RoleArn, RoleSessionName, WebIdentityToken, Options) ->
     Result = do_aws_cli([<<"sts assume-role-with-web-identity">>,
@@ -135,9 +136,9 @@ assume_role_with_web_identity(Region, RoleArn, RoleSessionName, WebIdentityToken
             AccessKeyId = maps:get(<<"AccessKeyId">>, CredentialsMap),
             SecretAccessKey = maps:get(<<"SecretAccessKey">>, CredentialsMap),
             Token = maps:get(<<"SessionToken">>, CredentialsMap),
-            Credentials = aws_credentials:make_map(?MODULE, AccessKeyId, SecretAccessKey, Token, Region),
             Expiration = maps:get(<<"Expiration">>, CredentialsMap),
-            {ok, Credentials, Expiration};
+            C = aws_credentials:make_map(?MODULE, AccessKeyId, SecretAccessKey, Token, Region),
+            {ok, C, Expiration};
         {ok, StatusCode, Output} ->
             {error, {aws_cli_failed, StatusCode, Output}};
         Error ->
@@ -146,11 +147,12 @@ assume_role_with_web_identity(Region, RoleArn, RoleSessionName, WebIdentityToken
 
 -spec aws_cli_command(map()) -> binary().
 aws_cli_command(Options) ->
-    case {os:getenv("AWS_CLI_COMMAND"), maps:get(aws_cli_command, Options, undefined)} of
-        {false, undefined} -> ?AWS_CLI_COMMAND;
-        {false, Command} -> Command;
-        {Command, undefined} -> list_to_binary(Command);
-        {_, Command} -> Command
+    CommandByOptions = maps:get(aws_cli_command, Options, undefined),
+    CommandByEnv = os:getenv("AWS_CLI_COMMAND"),
+    case {CommandByOptions, CommandByEnv} of
+        _ when is_binary(CommandByOptions) -> CommandByOptions;
+        _ when is_list(CommandByEnv) -> list_to_binary(CommandByEnv);
+        _ -> ?AWS_CLI_COMMAND
     end.
 
 -spec do_aws_cli(iodata(), map()) ->
@@ -177,7 +179,7 @@ do_aws_cli_loop(Port, Data) ->
         {Port, {exit_status, Status}} ->
             do_aws_cli_close(Port),
             {ok, Status, iolist_to_binary(Data)}
-    after ?COMMAND_TIMEOUT->
+    after ?COMMAND_TIMEOUT ->
         do_aws_cli_close(Port),
         {error, timeout}
     end.
