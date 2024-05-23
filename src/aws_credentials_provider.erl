@@ -36,6 +36,7 @@
                   | aws_credentials_file
                   | aws_credentials_ecs
                   | aws_credentials_ec2
+                  | aws_credentials_web_identity
                   | module().
 -type error_log() :: [{provider(), term()}].
 -export_type([ options/0, expiration/0, provider/0 ]).

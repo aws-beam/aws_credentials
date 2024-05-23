@@ -47,7 +47,7 @@
     <<"aws">>).
 
 -spec fetch(aws_credentials_provider:options()) ->
-    {error, any()} | {ok, aws_credentials:credentials(), aws_credentials:expiration()}.
+    {error, any()} | {ok, aws_credentials:credentials(), aws_credentials_provider:expiration()}.
 fetch(Options) ->
     try
         {ok, Region} = get_region(Options),
