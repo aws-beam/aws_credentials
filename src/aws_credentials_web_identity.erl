@@ -174,7 +174,7 @@ do_aws_cli_loop(Port, Data) ->
                     do_aws_cli_close(Port),
                     {error, output_size_exceeded};
                 false ->
-                    do_aws_cli_loop(Port, NewData)
+                    do_aws_cli_loop(Port, ConcatData)
             end;
         {Port, {exit_status, Status}} ->
             do_aws_cli_close(Port),
