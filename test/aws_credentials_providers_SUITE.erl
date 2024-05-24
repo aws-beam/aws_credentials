@@ -35,6 +35,7 @@ all() ->
   , {group, env}
   , {group, application_env}
   , {group, ecs}
+  , {group, credential_process}
   ].
 
 groups() ->
@@ -47,6 +48,7 @@ groups() ->
   , {env, [], all_testcases()}
   , {application_env, [], all_testcases()}
   , {ecs, [], all_testcases()}
+  , {credential_process, [], all_testcases()}
   ].
 
 all_testcases() ->
@@ -69,6 +71,8 @@ init_per_group(GroupName, Config) ->
     credential_env -> init_group(credential_env, provider(file), credential_env, Config);
     profile_env -> init_group(profile_env, provider(file), config_credential, Config);
     application_env -> init_group(application_env, provider(env), application_env, Config);
+    credential_process ->
+        init_group(credential_process, provider(file), credential_process, Config);
     GroupName -> init_group(GroupName, Config)
   end.
 
@@ -111,6 +115,9 @@ assert_test(credential_env) ->
 assert_test(profile_env) ->
   Provider = provider(file),
   assert_values(?DUMMY_ACCESS_KEY2, ?DUMMY_SECRET_ACCESS_KEY2, Provider);
+assert_test(credential_process) ->
+  Provider = provider(file),
+  assert_values(?DUMMY_ACCESS_KEY2, ?DUMMY_SECRET_ACCESS_KEY2, Provider);
 assert_test(GroupName) ->
   Provider = provider(GroupName),
   assert_values(?DUMMY_ACCESS_KEY, ?DUMMY_SECRET_ACCESS_KEY, Provider).
@@ -145,6 +152,8 @@ provider_opts(config_credential, Config) ->
   #{credential_path => ?config(data_dir, Config) ++ "config_credential/"};
 provider_opts(credential_env, _Config) ->
   #{credential_path => os:getenv("HOME")};
+provider_opts(credential_process, Config) ->
+  #{credential_path => ?config(data_dir, Config) ++ "credential_process/"};
 provider_opts(_GroupName, _Config) ->
   #{}.
 
