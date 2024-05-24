@@ -21,10 +21,11 @@
 %%
 %% Environment parameters:
 %% <ul>
-%%   <li> &lt;&lt;"credentials_path"&gt;&gt; - this is the base path to the both CLI configuration files.
+%%   <li> 'credential_path' - this is the base path to the both CLI configuration files.
 %%   And based on this path, credentials file should exist and config file is optional.
-%%   By default this is `~/.aws/'</li>
-%%   <li> &lt;&lt;"profile"&gt;&gt; - this is the desired profile to use in the credentials file.
+%%   By default this is "~/.aws/"</li>
+%%   <li> 'profile'; - this is the desired profile to use in the credentials file.
+%%   The profile can also be provided via the "AWS_PROFILE" os env.
 %%   By default this is &lt;&lt;"default"&gt;&gt;</li>
 %% </ul>
 %% @end
@@ -33,7 +34,12 @@
 
 -export([fetch/1]).
 
--spec fetch(aws_credentials_provider:options()) ->
+-type options() :: #{ credential_path => string()
+                    , profile => binary()
+                    }.
+-export_type([options/0]).
+
+-spec fetch(options()) ->
         {error, any()} | {ok, aws_credentials:credentials(), 'infinity'}.
 fetch(Options) ->
     FilePath = get_file_path(Options),
@@ -62,7 +68,7 @@ maybe_path_from_env(EnvVar, FilePath) ->
         {_, Path} -> Path
     end.
 
--spec get_file_path(aws_credentials_provider:options()) -> {error, any()} | string().
+-spec get_file_path(options()) -> {error, any()} | string().
 get_file_path(Options) ->
   case maps:get(credential_path, Options, undefined) of
     undefined -> maybe_add_home("/.aws/");
@@ -79,7 +85,7 @@ maybe_add_home(Path) ->
 -spec maybe_add_region(
         {error, any()} | {ok, aws_credentials:credentials(), 'infinity'},
         {error, any()} | string(),
-        aws_credentials_provider:options()
+        options()
       ) -> {ok, aws_credentials:credentials(), 'infinity'}.
 maybe_add_region({error, _} = Error, _Config, _Options) -> Error;
 maybe_add_region(Result, {error, _Error}, _Options) -> Result;
@@ -98,7 +104,7 @@ check_path_exists(Path) ->
       true -> Path
     end.
 
--spec parse_credentials_file(string(), aws_credentials_provider:options()) ->
+-spec parse_credentials_file(string(), options()) ->
         {error, any()} | {ok, aws_credentials:credentials(), 'infinity'}.
 parse_credentials_file(Path, Options) ->
     {ok, F} = file:read_file(Path),
@@ -123,7 +129,7 @@ parse_credentials_file(Path, Options) ->
             end
     end.
 
--spec parse_config_file(string(), aws_credentials_provider:options()) ->
+-spec parse_config_file(string(), options()) ->
         {error, any()} | {ok, map()}.
 parse_config_file(Path, Options) ->
     {ok, F} = file:read_file(Path),
@@ -138,7 +144,7 @@ read_from_profile(File, Profile) ->
         Map -> {ok, Map}
     end.
 
--spec desired_profile(aws_credentials_provider:options()) -> binary().
+-spec desired_profile(options()) -> binary().
 desired_profile(Options) ->
     case {os:getenv("AWS_PROFILE"), maps:get(profile, Options, undefined)} of
         {false, undefined} -> <<"default">>;

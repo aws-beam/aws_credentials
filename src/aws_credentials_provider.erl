@@ -30,7 +30,19 @@
 
 -export([fetch/0, fetch/1]).
 
--type options() :: #{provider() => map()}.
+%% `credential_path' and `profile' are treated as common options,
+%% and their values are inherited by `provider_options()'
+%% unless the same options exist in `provider_options()'.
+%% Note: This behaviour is for compatibility reason only, and
+%% do not add any other common options.
+-type options() :: #{ credential_path => string()
+                    , profile => binary()
+                    , provider() => provider_options()
+                    }.
+-type provider_options() :: #{ credential_path => string()
+                             , profile => binary()
+                             , any() => any()
+                             }.
 -type expiration() :: binary() | pos_integer() | infinity.
 -type provider() :: aws_credentials_env
                   | aws_credentials_file
@@ -40,7 +52,7 @@
 -type error_log() :: [{provider(), term()}].
 -export_type([ options/0, expiration/0, provider/0 ]).
 
--callback fetch(options()) ->
+-callback fetch(provider_options()) ->
   {ok, aws_credentials:credentials(), expiration()} | {error, any()}.
 
 -include_lib("kernel/include/logger.hrl").
@@ -74,7 +86,8 @@ evaluate_providers([], _Options, []) ->
 evaluate_providers([], _Options, Errors) when is_list(Errors) ->
     {error, lists:reverse(Errors)};
 evaluate_providers([ Provider | Providers ], Options, Errors) ->
-    case Provider:fetch(Options) of
+    ProviderOptions = get_provider_options(Provider, Options),
+    case Provider:fetch(ProviderOptions) of
         {error, _} = Error ->
             evaluate_providers(Providers, Options, [{Provider, Error} | Errors]);
         {ok, Credentials, Expiration} ->
@@ -87,3 +100,12 @@ get_env(Key, Default) ->
         undefined -> Default;
         {ok, Value} -> Value
     end.
+
+-spec get_provider_options(provider(), options()) -> provider_options().
+get_provider_options(Provider, Options) ->
+    ProviderOptions = maps:get(Provider, Options, #{}),
+    IsCommonOptions = fun(profile, _) -> true; (credential_path, _) -> true; (_, _) -> false end,
+    CommonOptions = maps:filter(IsCommonOptions, Options),
+    %% If an option exists in both ProviderOptions and CommonOptions,
+    %% the value in ProviderOptions should be adopted.
+    maps:merge(CommonOptions, ProviderOptions).
