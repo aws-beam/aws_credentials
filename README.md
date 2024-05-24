@@ -26,7 +26,7 @@ or a map of the shape:
 
 ```erlang
 #{
-  provider_source => Provider :: atom(),
+  provider_source => Provider :: module(),
   access_key_id => AccessKey :: binary(),
   secret_access_key => SecretKey :: binary(),
   token => Token :: binary(),
