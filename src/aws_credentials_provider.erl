@@ -1,7 +1,8 @@
 %% @doc This is the behaviour definition for a credential provider
 %% module and it iterates over a list of providers. You may set the
 %% `credential_providers` Erlang environment variable if you want to
-%% restrict checking only a certain subset of the default list.
+%% restrict checking only a certain subset of the default list or
+%% if you want to use your own custom providers.
 %%
 %% Default order of checking for credentials is:
 %% <ol>
@@ -34,7 +35,8 @@
 -type provider() :: aws_credentials_env
                   | aws_credentials_file
                   | aws_credentials_ecs
-                  | aws_credentials_ec2.
+                  | aws_credentials_ec2
+                  | module().
 -type error_log() :: [{provider(), term()}].
 -export_type([ options/0, expiration/0, provider/0 ]).
 
