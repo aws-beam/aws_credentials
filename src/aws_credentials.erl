@@ -35,11 +35,11 @@
         , make_map/5
         ]).
 
--record(state, { credentials = undefined :: map()
+-record(state, { credentials = undefined :: credentials()
                                           | undefined
                                           | information_redacted
-               , tref = undefind :: reference()
-                                  | undefined
+               , tref = undefined :: reference()
+                                   | undefined
                }).
 -type state() :: #state{}.
 
@@ -199,8 +199,8 @@ fetch_credentials(Options) ->
 undefined_or_fail(true) -> undefined;
 undefined_or_fail(false) -> error(no_credentials).
 
--spec setup_update_callback('infinity' | binary() | integer()) -> reference().
-setup_update_callback(infinity) -> ok;
+-spec setup_update_callback('infinity' | binary() | integer()) -> reference() | undefined.
+setup_update_callback(infinity) -> undefined;
 setup_update_callback(Expires) when is_binary(Expires) ->
     RefreshAfter = seconds_until_timestamp(Expires) - ?ALERT_BEFORE_EXPIRY,
     setup_callback(RefreshAfter);
