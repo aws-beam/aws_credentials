@@ -35,12 +35,12 @@
 -export_type([response/0, response_error/0, status_code/0, body/0,
               headers/0, header/0, url/0, method/0]).
 
--spec start() -> ok.
-
 -include_lib("kernel/include/logger.hrl").
 
+-spec start() -> ok.
 start() ->
-    inets:start(httpc, [{profile, ?PROFILE}]).
+    _ = inets:start(httpc, [{profile, ?PROFILE}]),
+    ok.
 
 %% @doc Attempt to request a URL with the 3 retries. 3 is the default.
 -spec request(method(), url()) -> response().
