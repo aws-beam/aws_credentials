@@ -32,14 +32,15 @@
 -type headers() :: [header()].
 -type response() :: {'error', response_error()} | {'ok', status_code(), body(), headers()}.
 
--export_type([response/0, response_error/0, status_code/0, body/0, headers/0]).
-
--spec start() -> ok.
+-export_type([response/0, response_error/0, status_code/0, body/0,
+              headers/0, header/0, url/0, method/0]).
 
 -include_lib("kernel/include/logger.hrl").
 
+-spec start() -> ok.
 start() ->
-    inets:start(httpc, [{profile, ?PROFILE}]).
+    _ = inets:start(httpc, [{profile, ?PROFILE}]),
+    ok.
 
 %% @doc Attempt to request a URL with the 3 retries. 3 is the default.
 -spec request(method(), url()) -> response().
@@ -58,7 +59,7 @@ request(Method, URL, RequestHeaders) ->
 %% successfully get the desired data. That is, it will return an
 %% ok tuple with a status code of 500 or 404 or some other HTTP error
 %% code and no data.
--spec request(method(), url(), [header()], pos_integer() ) -> response().
+-spec request(method(), url(), [header()], pos_integer()) -> response().
 request(Method, URL, RequestHeaders, Tries) when is_atom(Method)
                      andalso is_list(URL)
                      andalso is_integer(Tries)

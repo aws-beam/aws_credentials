@@ -41,7 +41,8 @@
                , tref = undefined :: reference()
                                    | undefined
                }).
--type state() :: #state{}.
+-opaque state() :: #state{}.
+-export_type([state/0]). % for linter only
 
 -type credentials() :: #{ credential_provider := aws_credentials_provider:provider()
                         , access_key_id := access_key_id()
@@ -128,9 +129,9 @@ terminate(_Reason, _State) ->
 
 -spec handle_call(any(), any(), state()) ->
         {'noreply', _} | {'reply', any(), state()}.
-handle_call(get_credentials, _From, State=#state{credentials=C}) ->
+handle_call(get_credentials, _From, #state{credentials=C}=State) ->
     {reply, C, State};
-handle_call({force_refresh, Options}, _From, State=#state{tref=T}) ->
+handle_call({force_refresh, Options}, _From, #state{tref=T}=State) ->
     {ok, C, NewT} = fetch_credentials(Options),
     case is_reference(T) of
         true -> erlang:cancel_timer(T);
