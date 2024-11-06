@@ -41,10 +41,12 @@ jobs:
     - name: Run CT Tests
       run: rebar3 ct
     - name: Store CT Logs
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v4
       with:
-        name: ct-logs
+        name: ct-logs_otp${{ matrix.otp-version }}_ref${{ github.sha }}
         path: _build/test/logs
+        overwrite: true
+        retention-days: 5
     - name: Run Checks
       run: rebar3 do dialyzer, xref
     - name: Create Cover Reports
@@ -56,10 +58,11 @@ jobs:
     - name: Produce Documentation
       run: rebar3 ex_doc || true
     - name: Publish Documentation
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v4
       with:
-        name: edoc
+        name: edoc_otp${{ matrix.otp-version }}
         path: doc
+        overwrite: true
   docs:
     strategy:
       matrix:
