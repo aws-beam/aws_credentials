@@ -43,9 +43,8 @@ jobs:
     - name: Store CT Logs
       uses: actions/upload-artifact@v4
       with:
-        name: ct-logs_otp${{ matrix.otp-version }}_ref${{ github.sha }}
+        name: ct-logs OTP${{ matrix.otp-version }}
         path: _build/test/logs
-        overwrite: true
         retention-days: 5
     - name: Run Checks
       run: rebar3 do dialyzer, xref
@@ -60,9 +59,8 @@ jobs:
     - name: Publish Documentation
       uses: actions/upload-artifact@v4
       with:
-        name: edoc_otp${{ matrix.otp-version }}
+        name: edoc OTP${{ matrix.otp-version }}
         path: doc
-        overwrite: true
   docs:
     strategy:
       matrix:
