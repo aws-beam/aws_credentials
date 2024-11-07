@@ -17,16 +17,16 @@ jobs:
       image: erlang:${{ matrix.otp-version }}
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Cache Hex packages
-      uses: actions/cache@v1
+      uses: actions/cache@v4
       with:
         path: ~/.cache/rebar3/hex/hexpm/packages
         key: ${{ runner.os }}-hex-${{ hashFiles(format('{0}{1}', github.workspace, '/rebar.lock')) }}
         restore-keys: |
           ${{ runner.os }}-hex-
     - name: Cache Dialyzer PLTs
-      uses: actions/cache@v1
+      uses: actions/cache@v4
       with:
         path: ~/.cache/rebar3/rebar3_*.plt
         key: ${{ runner.os }}-dialyzer-${{ hashFiles(format('{0}{1}', github.workspace, '/rebar.config')) }}
@@ -43,9 +43,8 @@ jobs:
     - name: Store CT Logs
       uses: actions/upload-artifact@v4
       with:
-        name: ct-logs_otp${{ matrix.otp-version }}_ref${{ github.sha }}
+        name: ct-logs OTP${{ matrix.otp-version }}
         path: _build/test/logs
-        overwrite: true
         retention-days: 5
     - name: Run Checks
       run: rebar3 do dialyzer, xref
@@ -60,9 +59,8 @@ jobs:
     - name: Publish Documentation
       uses: actions/upload-artifact@v4
       with:
-        name: edoc_otp${{ matrix.otp-version }}
+        name: edoc OTP${{ matrix.otp-version }}
         path: doc
-        overwrite: true
   docs:
     strategy:
       matrix:
@@ -73,16 +71,16 @@ jobs:
       image: erlang:${{ matrix.otp-version }}
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Cache Hex packages
-      uses: actions/cache@v1
+      uses: actions/cache@v4
       with:
         path: ~/.cache/rebar3/hex/hexpm/packages
         key: ${{ runner.os }}-hex-${{ hashFiles(format('{0}{1}', github.workspace, '/rebar.lock')) }}
         restore-keys: |
           ${{ runner.os }}-hex-
     - name: Cache Dialyzer PLTs
-      uses: actions/cache@v1
+      uses: actions/cache@v4
       with:
         path: ~/.cache/rebar3/rebar3_*.plt
         key: ${{ runner.os }}-dialyzer-${{ hashFiles(format('{0}{1}', github.workspace, '/rebar.config')) }}
