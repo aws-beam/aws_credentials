@@ -22,8 +22,12 @@
         , handle_call/3
         , handle_cast/2
         , handle_info/2
-        , format_status/2
+        , format_status/1
         ]).
+
+-if(?OTP_RELEASE < 27).
+-export([format_status/2]).
+-endif.
 
 -export([ start_link/0
         , stop/0
@@ -162,9 +166,18 @@ handle_info(Message, State) ->
 code_change(_Prev, State, _Extra) ->
     {ok, State}.
 
+-spec format_status(gen_server:format_status()) -> gen_server:format_status().
+format_status(#{reason := _Reason, state := State} = Status) ->
+    Status#{state => State#state{credentials = information_redacted}};
+format_status(Status) ->
+    Status.
+
+-if(?OTP_RELEASE < 27).
+%% TODO: remove once OTP-25 is the oldest supported OTP version
 -spec format_status('normal' | 'terminate', any()) -> any().
 format_status(_, [_PDict, State]) ->
     [{data, [{"State", State#state{credentials=information_redacted}}]}].
+-endif.
 
 %%====================================================================
 %% Internal functions
