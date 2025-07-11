@@ -35,6 +35,7 @@ all() ->
   , {group, env}
   , {group, application_env}
   , {group, ecs}
+  , {group, eks}
   , {group, credential_process}
   ].
 
@@ -48,6 +49,7 @@ groups() ->
   , {env, [], all_testcases()}
   , {application_env, [], all_testcases()}
   , {ecs, [], all_testcases()}
+  , {eks, [], all_testcases()}
   , {credential_process, [], all_testcases()}
   ].
 
@@ -118,6 +120,9 @@ assert_test(profile_env) ->
 assert_test(credential_process) ->
   Provider = provider(file),
   assert_values(?DUMMY_ACCESS_KEY2, ?DUMMY_SECRET_ACCESS_KEY2, Provider);
+assert_test(eks) ->
+  Provider = provider(eks),
+  assert_values(?DUMMY_ACCESS_KEY, ?DUMMY_SECRET_ACCESS_KEY, Provider);
 assert_test(GroupName) ->
   Provider = provider(GroupName),
   assert_values(?DUMMY_ACCESS_KEY, ?DUMMY_SECRET_ACCESS_KEY, Provider).
@@ -196,6 +201,18 @@ setup_provider(ecs, _Config) ->
   #{ mocks => [httpc]
    , env => [{"AWS_CONTAINER_CREDENTIALS_RELATIVE_URI", OldUri}]
    };
+setup_provider(eks, Config) ->
+  OldFullUri = os:getenv("AWS_CONTAINER_CREDENTIALS_FULL_URI"),
+  OldTokenFile = os:getenv("AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE"),
+  os:putenv("AWS_CONTAINER_CREDENTIALS_FULL_URI", "https://eks.amazonaws.com/dummy-uri"),
+  os:putenv("AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE", ?config(data_dir, Config) ++ "eks/token"),
+  meck:new(httpc, [no_link, passthrough]),
+  meck:expect(httpc, request, fun mock_httpc_request_eks/5),
+  #{ mocks => [httpc]
+   , env => [ {"AWS_CONTAINER_CREDENTIALS_FULL_URI", OldFullUri}
+            , {"AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE", OldTokenFile}
+            ]
+   };
 setup_provider(config_env, Config) ->
   Old = os:getenv("AWS_CONFIG_FILE"),
   os:putenv("AWS_CONFIG_FILE", ?config(data_dir, Config) ++ "env/config"),
@@ -258,6 +275,14 @@ mock_httpc_request_ecs(Method, Request, HTTPOptions, Options, Profile) ->
       meck:passthrough([Method, Request, HTTPOptions, Options, Profile])
   end.
 
+mock_httpc_request_eks(Method, Request, HTTPOptions, Options, Profile) ->
+  case Request of
+    {"https://eks.amazonaws.com/dummy-uri", [{"authorization", <<"dummy-authorization-token">>}]} ->
+      {ok, response('eks-credentials')};
+    _ ->
+      meck:passthrough([Method, Request, HTTPOptions, Options, Profile])
+  end.
+
 response(BodyTag) ->
   StatusLine = {unused, 200, unused},
   Headers = [],
@@ -277,6 +302,12 @@ body('dummy-role') ->
 body('document') ->
   jsx:encode(#{ 'region' => unused });
 body('dummy-uri') ->
+  jsx:encode(#{ 'AccessKeyId' => ?DUMMY_ACCESS_KEY
+              , 'SecretAccessKey' => ?DUMMY_SECRET_ACCESS_KEY
+              , 'Expiration' => <<"2025-09-25T23:43:56Z">>
+              , 'Token' => unused
+              });
+body('eks-credentials') ->
   jsx:encode(#{ 'AccessKeyId' => ?DUMMY_ACCESS_KEY
               , 'SecretAccessKey' => ?DUMMY_SECRET_ACCESS_KEY
               , 'Expiration' => <<"2025-09-25T23:43:56Z">>
