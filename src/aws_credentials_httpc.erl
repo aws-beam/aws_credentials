@@ -21,7 +21,7 @@
 
 -type httpc_result() :: {status_line(), [header()], body()}.
 -type status_line() :: {http_version(), status_code(), reason_phrase()}.
--type header() :: {string(), string()}.
+-type header() :: {string(), binary() | string()}.
 -type body() :: binary().
 -type http_version() :: string().
 -type status_code() :: non_neg_integer().
