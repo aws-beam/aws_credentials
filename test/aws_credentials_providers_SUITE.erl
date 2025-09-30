@@ -36,6 +36,8 @@ all() ->
   , {group, application_env}
   , {group, ecs}
   , {group, eks}
+  , {group, web_identity}
+  , {group, web_identity_default_session_name}
   , {group, credential_process}
   ].
 
@@ -50,6 +52,8 @@ groups() ->
   , {application_env, [], all_testcases()}
   , {ecs, [], all_testcases()}
   , {eks, [], all_testcases()}
+  , {web_identity, [], all_testcases()}
+  , {web_identity_default_session_name, [], all_testcases()}
   , {credential_process, [], all_testcases()}
   ].
 
@@ -75,6 +79,8 @@ init_per_group(GroupName, Config) ->
     application_env -> init_group(application_env, provider(env), application_env, Config);
     credential_process ->
         init_group(credential_process, provider(file), credential_process, Config);
+    web_identity_default_session_name = GroupName ->
+        init_group(GroupName, provider(web_identity), GroupName, Config);
     GroupName -> init_group(GroupName, Config)
   end.
 
@@ -123,6 +129,12 @@ assert_test(credential_process) ->
 assert_test(eks) ->
   Provider = provider(eks),
   assert_values(?DUMMY_ACCESS_KEY, ?DUMMY_SECRET_ACCESS_KEY, Provider);
+assert_test(WebIdentity) when WebIdentity =:= web_identity;
+    WebIdentity =:= web_identity_default_session_name ->
+  Provider = provider(web_identity),
+  assert_values(?DUMMY_ACCESS_KEY, ?DUMMY_SECRET_ACCESS_KEY, Provider),
+  #{token := Token} = aws_credentials:get_credentials(),
+  ?assertEqual(<<"unused">>, Token);
 assert_test(GroupName) ->
   Provider = provider(GroupName),
   assert_values(?DUMMY_ACCESS_KEY, ?DUMMY_SECRET_ACCESS_KEY, Provider).
@@ -159,6 +171,8 @@ provider_opts(credential_env, _Config) ->
   #{credential_path => os:getenv("HOME")};
 provider_opts(credential_process, Config) ->
   #{credential_path => ?config(data_dir, Config) ++ "credential_process/"};
+provider_opts(web_identity, _Config) ->
+  #{role_session_name => "overridden"};
 provider_opts(_GroupName, _Config) ->
   #{}.
 
@@ -213,6 +227,28 @@ setup_provider(eks, Config) ->
             , {"AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE", OldTokenFile}
             ]
    };
+setup_provider(web_identity_default_session_name, Config) ->
+  OldRoleArn = os:getenv("AWS_ROLE_ARN"),
+  OldWebIdentityTokenFile = os:getenv("AWS_WEB_IDENTITY_TOKEN_FILE"),
+  os:putenv("AWS_ROLE_ARN", "arg:aws:iam::123123123"),
+  os:putenv("AWS_WEB_IDENTITY_TOKEN_FILE", ?config(data_dir, Config) ++ "web_identity/token"),
+  meck:new(httpc, [no_link, passthrough]),
+  meck:expect(httpc, request, fun mock_httpc_request_web_identity_default_session_name/5),
+  #{ mocks => [httpc]
+  , env => [ {"AWS_ROLE_ARN", OldRoleArn}
+  , {"AWS_WEB_IDENTITY_TOKEN_FILE", OldWebIdentityTokenFile}
+  ]};
+setup_provider(web_identity, Config) ->
+  OldRoleArn = os:getenv("AWS_ROLE_ARN"),
+  OldWebIdentityTokenFile = os:getenv("AWS_WEB_IDENTITY_TOKEN_FILE"),
+  os:putenv("AWS_ROLE_ARN", "arg:aws:iam::123123123"),
+  os:putenv("AWS_WEB_IDENTITY_TOKEN_FILE", ?config(data_dir, Config) ++ "web_identity/token"),
+  meck:new(httpc, [no_link, passthrough]),
+  meck:expect(httpc, request, fun mock_httpc_request_web_identity/5),
+  #{ mocks => [httpc]
+  , env => [ {"AWS_ROLE_ARN", OldRoleArn}
+  , {"AWS_WEB_IDENTITY_TOKEN_FILE", OldWebIdentityTokenFile}
+  ]};
 setup_provider(config_env, Config) ->
   Old = os:getenv("AWS_CONFIG_FILE"),
   os:putenv("AWS_CONFIG_FILE", ?config(data_dir, Config) ++ "env/config"),
@@ -283,6 +319,31 @@ mock_httpc_request_eks(Method, Request, HTTPOptions, Options, Profile) ->
       meck:passthrough([Method, Request, HTTPOptions, Options, Profile])
   end.
 
+mock_httpc_request_web_identity_default_session_name(
+    Method, Request, HTTPOptions, Options, Profile) ->
+  case Request of
+    {"https://sts.amazonaws.com/" ++
+      "?Action=AssumeRoleWithWebIdentity&Version=2011-06-15" ++
+      "&RoleArn=arg:aws:iam::123123123" ++
+      "&WebIdentityToken=dummy-web-identity-token" ++
+      "&RoleSessionName=erlang_aws_credentials", []} ->
+      {ok, response('web-identity-credentials')};
+    _ ->
+      meck:passthrough([Method, Request, HTTPOptions, Options, Profile])
+  end.
+
+mock_httpc_request_web_identity(Method, Request, HTTPOptions, Options, Profile) ->
+  case Request of
+    {"https://sts.amazonaws.com/" ++
+      "?Action=AssumeRoleWithWebIdentity&Version=2011-06-15" ++
+      "&RoleArn=arg:aws:iam::123123123" ++
+      "&WebIdentityToken=dummy-web-identity-token" ++
+      "&RoleSessionName=overridden", []} ->
+      {ok, response('web-identity-credentials')};
+    _ ->
+      meck:passthrough([Method, Request, HTTPOptions, Options, Profile])
+  end.
+
 response(BodyTag) ->
   StatusLine = {unused, 200, unused},
   Headers = [],
@@ -296,7 +357,7 @@ body('security-credentials') ->
 body('dummy-role') ->
   jsx:encode(#{ 'AccessKeyId' => ?DUMMY_ACCESS_KEY
               , 'SecretAccessKey' => ?DUMMY_SECRET_ACCESS_KEY
-              , 'Expiration' => <<"2025-09-25T23:43:56Z">>
+              , 'Expiration' => <<"2026-09-25T23:43:56Z">>
               , 'Token' => unused
               });
 body('document') ->
@@ -304,15 +365,26 @@ body('document') ->
 body('dummy-uri') ->
   jsx:encode(#{ 'AccessKeyId' => ?DUMMY_ACCESS_KEY
               , 'SecretAccessKey' => ?DUMMY_SECRET_ACCESS_KEY
-              , 'Expiration' => <<"2025-09-25T23:43:56Z">>
+              , 'Expiration' => <<"2026-09-25T23:43:56Z">>
               , 'Token' => unused
               });
 body('eks-credentials') ->
   jsx:encode(#{ 'AccessKeyId' => ?DUMMY_ACCESS_KEY
               , 'SecretAccessKey' => ?DUMMY_SECRET_ACCESS_KEY
-              , 'Expiration' => <<"2025-09-25T23:43:56Z">>
+              , 'Expiration' => <<"2026-09-25T23:43:56Z">>
               , 'Token' => unused
-              }).
+              });
+body('web-identity-credentials') ->
+  <<"<AssumeRoleWithWebIdentityResponse>
+    <AssumeRoleWithWebIdentityResult>
+      <Credentials>
+        <AccessKeyId>", ?DUMMY_ACCESS_KEY/binary, "</AccessKeyId>
+        <SecretAccessKey>", ?DUMMY_SECRET_ACCESS_KEY/binary, "</SecretAccessKey>
+        <SessionToken>unused</SessionToken>
+        <Expiration>2026-09-25T23:43:56Z</Expiration>
+      </Credentials>
+    </AssumeRoleWithWebIdentityResult>
+  </AssumeRoleWithWebIdentityResponse>">>.
 
 maybe_put_env(Key, false) ->
   os:unsetenv(Key);
