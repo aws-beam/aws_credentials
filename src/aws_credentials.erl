@@ -221,9 +221,15 @@ setup_update_callback(Expires) when is_binary(Expires) ->
 setup_update_callback(Expires) when is_integer(Expires) ->
     setup_callback(Expires - ?ALERT_BEFORE_EXPIRY).
 
--spec setup_callback(pos_integer()) -> reference().
+-spec setup_callback(integer()) -> reference().
 setup_callback(Seconds) ->
-    erlang:send_after(Seconds * 1000, self(), refresh_credentials).
+    erlang:send_after(timeout(Seconds) * 1000, self(), refresh_credentials).
+
+-spec timeout(integer()) -> pos_integer().
+timeout(Seconds) when is_integer(Seconds), Seconds >= 0 ->
+    Seconds;
+timeout(_) ->
+    ?RETRY_DELAY.
 
 -spec seconds_until_timestamp(binary()) -> integer().
 seconds_until_timestamp(Timestamp) ->
