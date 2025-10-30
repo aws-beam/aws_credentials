@@ -34,7 +34,8 @@
 -export([fetch/1]).
 
 -spec fetch(aws_credentials_provider:options()) ->
-        {error, any()} | {ok, aws_credentials:credentials(), 'infinity'}.
+        {ok, aws_credentials:credentials(), aws_credentials_provider:expiration()} |
+        {error, any()}.
 fetch(Options) ->
     FilePath = get_file_path(Options),
     ConfigPath = does_credentials_file_exist(FilePath, config),
@@ -77,18 +78,18 @@ maybe_add_home(Path) ->
     end.
 
 -spec maybe_add_region(
-        {error, any()} | {ok, aws_credentials:credentials(), 'infinity'},
+        {error, any()} | {ok, aws_credentials:credentials(), aws_credentials_provider:expiration()},
         {error, any()} | string(),
         aws_credentials_provider:options()
-      ) -> {ok, aws_credentials:credentials(), 'infinity'}.
+      ) -> {ok, aws_credentials:credentials(), aws_credentials_provider:expiration()}.
 maybe_add_region({error, _} = Error, _Config, _Options) -> Error;
 maybe_add_region(Result, {error, _Error}, _Options) -> Result;
-maybe_add_region({ok, Credentials, infinity}, ConfigPath, Options) ->
+maybe_add_region({ok, Credentials, Expiration}, ConfigPath, Options) ->
     case parse_config_file(ConfigPath, Options) of
         {ok, Config} ->
-            {ok, maps:put(region, maps:get(<<"region">>, Config), Credentials), infinity};
+            {ok, maps:put(region, maps:get(<<"region">>, Config), Credentials), Expiration};
         {error, _} ->
-            {ok, Credentials, infinity}
+            {ok, Credentials, Expiration}
     end.
 
 -spec check_path_exists(string()) -> {error, 'file_not_found'} | string().
@@ -99,7 +100,7 @@ check_path_exists(Path) ->
     end.
 
 -spec parse_credentials_file(string(), aws_credentials_provider:options()) ->
-        {error, any()} | {ok, aws_credentials:credentials(), 'infinity'}.
+        {error, any()} | {ok, aws_credentials:credentials(), aws_credentials_provider:expiration()}.
 parse_credentials_file(Path, Options) ->
     {ok, F} = file:read_file(Path),
     {ok, Profiles} = eini:parse(F),
@@ -114,7 +115,7 @@ parse_credentials_file(Path, Options) ->
                                               maps:get(<<"aws_access_key_id">>, Profile),
                                               maps:get(<<"aws_secret_access_key">>, Profile),
                                               maps:get(<<"aws_session_token">>, Profile)),
-                   infinity};
+                   maps:get(<<"aws_expiration">>, Profile, infinity)};
               false ->
                 {ok, aws_credentials:make_map(?MODULE,
                                               maps:get(<<"aws_access_key_id">>, Profile),
@@ -151,6 +152,8 @@ read_from_profile(File, Profile) ->
                                 {true, {<<"aws_secret_access_key">>, SAK}};
                             ({<<"SessionToken">>, ST}) ->
                                 {true, {<<"aws_session_token">>, ST}};
+                            ({<<"Expiration">>, E}) ->
+                                {true, {<<"aws_expiration">>, E}};
                             (_) ->
                                 false
                         end, maps:to_list(CredResult))),
