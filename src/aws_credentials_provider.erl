@@ -35,9 +35,9 @@
 -type provider() :: aws_credentials_env
                   | aws_credentials_file
                   | aws_credentials_ecs
-                  | aws_credentials_ec2
                   | aws_credentials_eks
                   | aws_credentials_web_identity
+                  | aws_credentials_ec2
                   | module().
 -type error_log() :: [{provider(), term()}].
 -export_type([ options/0, expiration/0, provider/0, error_log/0 ]).
@@ -50,9 +50,9 @@
 -define(DEFAULT_PROVIDERS, [aws_credentials_env,
                             aws_credentials_file,
                             aws_credentials_ecs,
-                            aws_credentials_ec2,
                             aws_credentials_eks,
-                            aws_credentials_web_identity]).
+                            aws_credentials_web_identity,
+                            aws_credentials_ec2]).
 
 -spec fetch() ->
         {ok, aws_credentials:credentials(), expiration()} |

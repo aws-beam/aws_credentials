@@ -10,9 +10,9 @@ sources in the following default order:
 2. OS environment variables
 3. An AWS [credentials file][1]
 4. ECS task credentials
-5. EC2 metadata
-6. EKS Pod Identity
-7. Web Identity
+5. EKS Pod Identity
+6. Web Identity
+7. EC2 metadata
 
 Usage
 -----
