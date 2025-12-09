@@ -31,7 +31,7 @@
 
 -export([fetch/1]).
 
--spec fetch(aws_credentials_provider:options()) ->
+-spec fetch(any()) ->
         {error, _}
       | {ok, aws_credentials:credentials(), aws_credentials_provider:expiration()}.
 fetch(_Options) ->
