@@ -41,6 +41,8 @@ all() ->
   , {group, web_identity}
   , {group, web_identity_default_session_name}
   , {group, web_identity_error}
+  , {group, web_identity_with_region}
+  , {group, web_identity_with_default_region}
   , {group, credential_process}
   ].
 
@@ -59,6 +61,8 @@ groups() ->
   , {web_identity, [], all_testcases()}
   , {web_identity_default_session_name, [], all_testcases()}
   , {web_identity_error, [], all_testcases()}
+  , {web_identity_with_region, [], [get_credentials]}
+  , {web_identity_with_default_region, [], [get_credentials]}
   , {credential_process, [], all_testcases()}
   ].
 
@@ -89,6 +93,10 @@ init_per_group(GroupName, Config) ->
         init_group(GroupName, provider(web_identity), GroupName, Config);
     web_identity_error ->
         init_group(web_identity_error, provider(web_identity), web_identity, Config);
+    web_identity_with_region ->
+        init_group(web_identity_with_region, provider(web_identity), web_identity, Config);
+    web_identity_with_default_region ->
+        init_group(web_identity_with_default_region, provider(web_identity), web_identity, Config);
     GroupName -> init_group(GroupName, Config)
   end.
 
@@ -154,6 +162,32 @@ assert_test(web_identity_error) ->
   ExpectedMsg = <<"The web identity token that was passed is expired">>,
   ?assertEqual(<<"InvalidIdentityToken">>, Code),
   ?assertEqual(ExpectedMsg, Message);
+assert_test(web_identity_with_region) ->
+  Provider = provider(web_identity),
+  #{ access_key_id := AccessKeyId
+   , credential_provider := CredentialProvider
+   , secret_access_key := SecretAccessKey
+   , token := Token
+   , region := Region
+   } = aws_credentials:get_credentials(),
+  ?assertEqual(?DUMMY_ACCESS_KEY, AccessKeyId),
+  ?assertEqual(?DUMMY_SECRET_ACCESS_KEY, SecretAccessKey),
+  ?assertEqual(Provider, CredentialProvider),
+  ?assertEqual(<<"unused">>, Token),
+  ?assertEqual(<<"us-west-2">>, Region);
+assert_test(web_identity_with_default_region) ->
+  Provider = provider(web_identity),
+  #{ access_key_id := AccessKeyId
+   , credential_provider := CredentialProvider
+   , secret_access_key := SecretAccessKey
+   , token := Token
+   , region := Region
+   } = aws_credentials:get_credentials(),
+  ?assertEqual(?DUMMY_ACCESS_KEY, AccessKeyId),
+  ?assertEqual(?DUMMY_SECRET_ACCESS_KEY, SecretAccessKey),
+  ?assertEqual(Provider, CredentialProvider),
+  ?assertEqual(<<"unused">>, Token),
+  ?assertEqual(<<"ap-southeast-1">>, Region);
 assert_test(GroupName) ->
   Provider = provider(GroupName),
   assert_values(?DUMMY_ACCESS_KEY, ?DUMMY_SECRET_ACCESS_KEY, Provider).
@@ -179,6 +213,10 @@ assert_values(DummyAccessKey, DummySecretAccessKey, Provider, DummyRegion) ->
   ?assertEqual(DummyRegion, Region).
 
 %% Helpers ====================================================================
+provider(web_identity_with_region) ->
+  aws_credentials_web_identity;
+provider(web_identity_with_default_region) ->
+  aws_credentials_web_identity;
 provider(GroupName) ->
   list_to_existing_atom("aws_credentials_" ++ atom_to_list(GroupName)).
 
@@ -279,6 +317,42 @@ setup_provider(web_identity_error, Config) ->
   #{ mocks => [httpc]
    , env => [ {"AWS_ROLE_ARN", OldRoleArn}
             , {"AWS_WEB_IDENTITY_TOKEN_FILE", OldWebIdentityTokenFile}
+            ]
+   };
+setup_provider(web_identity_with_region, Config) ->
+  OldRoleArn = os:getenv("AWS_ROLE_ARN"),
+  OldWebIdentityTokenFile = os:getenv("AWS_WEB_IDENTITY_TOKEN_FILE"),
+  OldRegion = os:getenv("AWS_REGION"),
+  os:putenv("AWS_ROLE_ARN", "arg:aws:iam::123123123"),
+  os:putenv("AWS_WEB_IDENTITY_TOKEN_FILE", ?config(data_dir, Config) ++ "web_identity/token"),
+  os:putenv("AWS_REGION", "us-west-2"),
+  meck:new(httpc, [no_link, passthrough]),
+  meck:expect(httpc, request, fun mock_httpc_request_web_identity/5),
+  #{ mocks => [httpc]
+   , env => [ {"AWS_ROLE_ARN", OldRoleArn}
+            , {"AWS_WEB_IDENTITY_TOKEN_FILE", OldWebIdentityTokenFile}
+            , {"AWS_REGION", OldRegion}
+            ]
+   };
+setup_provider(web_identity_with_default_region, Config) ->
+  OldRoleArn = os:getenv("AWS_ROLE_ARN"),
+  OldWebIdentityTokenFile = os:getenv("AWS_WEB_IDENTITY_TOKEN_FILE"),
+  OldRegion = os:getenv("AWS_REGION"),
+  OldDefaultRegion = os:getenv("AWS_DEFAULT_REGION"),
+  case OldRegion of
+    false -> ok;
+    _ -> os:unsetenv("AWS_REGION")
+  end,
+  os:putenv("AWS_ROLE_ARN", "arg:aws:iam::123123123"),
+  os:putenv("AWS_WEB_IDENTITY_TOKEN_FILE", ?config(data_dir, Config) ++ "web_identity/token"),
+  os:putenv("AWS_DEFAULT_REGION", "ap-southeast-1"),
+  meck:new(httpc, [no_link, passthrough]),
+  meck:expect(httpc, request, fun mock_httpc_request_web_identity/5),
+  #{ mocks => [httpc]
+   , env => [ {"AWS_ROLE_ARN", OldRoleArn}
+            , {"AWS_WEB_IDENTITY_TOKEN_FILE", OldWebIdentityTokenFile}
+            , {"AWS_REGION", OldRegion}
+            , {"AWS_DEFAULT_REGION", OldDefaultRegion}
             ]
    };
 setup_provider(config_env, Config) ->
