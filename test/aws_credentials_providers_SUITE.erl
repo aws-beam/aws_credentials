@@ -42,6 +42,7 @@ all() ->
   , {group, web_identity_default_session_name}
   , {group, web_identity_error}
   , {group, credential_process}
+  , {group, credential_process_invalid_json}
   ].
 
 groups() ->
@@ -60,6 +61,7 @@ groups() ->
   , {web_identity_default_session_name, [], all_testcases()}
   , {web_identity_error, [], all_testcases()}
   , {credential_process, [], all_testcases()}
+  , {credential_process_invalid_json, [], all_testcases()}
   ].
 
 all_testcases() ->
@@ -85,6 +87,9 @@ init_per_group(GroupName, Config) ->
     env_precedence -> init_group(env_precedence, provider(env), env_precedence, Config);
     credential_process ->
         init_group(credential_process, provider(file), credential_process, Config);
+    credential_process_invalid_json ->
+        init_group(credential_process_invalid_json, provider(file),
+                   credential_process_invalid_json, Config);
     web_identity_default_session_name = GroupName ->
         init_group(GroupName, provider(web_identity), GroupName, Config);
     web_identity_error ->
@@ -137,6 +142,12 @@ assert_test(profile_env) ->
 assert_test(credential_process) ->
   Provider = provider(file),
   assert_values(?DUMMY_ACCESS_KEY2, ?DUMMY_SECRET_ACCESS_KEY2, Provider);
+assert_test(credential_process_invalid_json) ->
+  ?assertEqual(undefined, aws_credentials:get_credentials()),
+  {ok, ProviderOpts} = application:get_env(aws_credentials, provider_options),
+  ?assertMatch(
+     {error, [{aws_credentials_file, {error, {invalid_credential_process_output, _}}}]},
+     aws_credentials_provider:fetch(ProviderOpts));
 assert_test(eks) ->
   Provider = provider(eks),
   assert_values(?DUMMY_ACCESS_KEY, ?DUMMY_SECRET_ACCESS_KEY, Provider);
@@ -190,6 +201,8 @@ provider_opts(credential_env, _Config) ->
   #{credential_path => os:getenv("HOME")};
 provider_opts(credential_process, Config) ->
   #{credential_path => ?config(data_dir, Config) ++ "credential_process/"};
+provider_opts(credential_process_invalid_json, Config) ->
+  #{credential_path => ?config(data_dir, Config) ++ "credential_process_invalid_json/"};
 provider_opts(web_identity, _Config) ->
   #{role_session_name => "overridden"};
 provider_opts(_GroupName, _Config) ->

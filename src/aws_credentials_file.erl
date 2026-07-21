@@ -138,29 +138,45 @@ read_from_profile(File, Profile) ->
         undefined -> {error, {desired_profile_not_found, Profile}};
         Map ->
             case maps:is_key(<<"credential_process">>, Map) of
-                true ->
-                    % Source credentials with an external process
-                    % https://docs.aws.amazon.com/cli/v1/userguide/cli-configure-sourcing-external.html
-                    Process = maps:get(<<"credential_process">>, Map),
-                    Stdout = os:cmd(binary_to_list(Process)),
-                    CredResult = jsx:decode(iolist_to_binary(Stdout)),
-                    CredsMap = maps:from_list(lists:filtermap(
-                        fun
-                            ({<<"AccessKeyId">>, AKI}) ->
-                                {true, {<<"aws_access_key_id">>, AKI}};
-                            ({<<"SecretAccessKey">>, SAK}) ->
-                                {true, {<<"aws_secret_access_key">>, SAK}};
-                            ({<<"SessionToken">>, ST}) ->
-                                {true, {<<"aws_session_token">>, ST}};
-                            ({<<"Expiration">>, E}) ->
-                                {true, {<<"aws_expiration">>, E}};
-                            (_) ->
-                                false
-                        end, maps:to_list(CredResult))),
-                    {ok, maps:merge(Map, CredsMap)};
-                false ->
-                    {ok, Map}
+                true -> resolve_credential_process(Map);
+                false -> {ok, Map}
             end
+    end.
+
+%% Source credentials with an external process
+%% https://docs.aws.amazon.com/cli/v1/userguide/cli-configure-sourcing-external.html
+-spec resolve_credential_process(map()) -> {error, any()} | {ok, map()}.
+resolve_credential_process(Map) ->
+    Process = maps:get(<<"credential_process">>, Map),
+    Stdout = os:cmd(binary_to_list(Process)),
+    case decode_credential_process_output(Stdout) of
+        {error, _} = Error ->
+            Error;
+        {ok, CredResult} ->
+            CredsMap = maps:from_list(lists:filtermap(
+                fun credential_process_field/1, maps:to_list(CredResult))),
+            {ok, maps:merge(Map, CredsMap)}
+    end.
+
+-spec credential_process_field({binary(), any()}) -> {true, {binary(), any()}} | false.
+credential_process_field({<<"AccessKeyId">>, AKI}) ->
+    {true, {<<"aws_access_key_id">>, AKI}};
+credential_process_field({<<"SecretAccessKey">>, SAK}) ->
+    {true, {<<"aws_secret_access_key">>, SAK}};
+credential_process_field({<<"SessionToken">>, ST}) ->
+    {true, {<<"aws_session_token">>, ST}};
+credential_process_field({<<"Expiration">>, E}) ->
+    {true, {<<"aws_expiration">>, E}};
+credential_process_field(_) ->
+    false.
+
+-spec decode_credential_process_output(iodata()) -> {error, any()} | {ok, map()}.
+decode_credential_process_output(Stdout) ->
+    try jsx:decode(iolist_to_binary(Stdout)) of
+        Decoded when is_map(Decoded) -> {ok, Decoded};
+        _NotAMap -> {error, {invalid_credential_process_output, Stdout}}
+    catch
+        error:_ -> {error, {invalid_credential_process_output, Stdout}}
     end.
 
 -spec desired_profile(aws_credentials_provider:options()) -> binary().
