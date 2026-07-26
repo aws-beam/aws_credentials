@@ -16,8 +16,21 @@
         "https://sts.amazonaws.com/?Action=AssumeRoleWithWebIdentity&Version=2011-06-15" ++
         "&RoleArn=~s&WebIdentityToken=~s&RoleSessionName=~s").
 -define(DEFAULT_SESSION_NAME, "erlang_aws_credentials").
+-define(AWS_REGION, ["AWS_REGION", "AWS_DEFAULT_REGION"]).
 
 -export([fetch/1]).
+
+-spec get_region() -> undefined | binary().
+get_region() ->
+    get_env(?AWS_REGION).
+
+-spec get_env([string()]) -> undefined | binary().
+get_env([]) -> undefined;
+get_env([Head | Tail]) ->
+    case os:getenv(Head) of
+        false -> get_env(Tail);
+        Val -> list_to_binary(Val)
+    end.
 
 -spec fetch(aws_credentials_provider:options()) ->
         {error, _}
@@ -74,10 +87,19 @@ parse_credentials(Body) ->
     xmerl_xpath:string("//Credentials/SecretAccessKey/text()", Doc),
   [#xmlText{value = Token}] = xmerl_xpath:string("//Credentials/SessionToken/text()", Doc),
   [#xmlText{value = Expiration}] = xmerl_xpath:string("//Credentials/Expiration/text()", Doc),
-  Creds = aws_credentials:make_map(?MODULE,
-    list_to_binary(AccessKeyId),
-    list_to_binary(SecretAccessKey),
-    list_to_binary(Token)),
+  Creds = case get_region() of
+    undefined ->
+      aws_credentials:make_map(?MODULE,
+        list_to_binary(AccessKeyId),
+        list_to_binary(SecretAccessKey),
+        list_to_binary(Token));
+    Region ->
+      aws_credentials:make_map(?MODULE,
+        list_to_binary(AccessKeyId),
+        list_to_binary(SecretAccessKey),
+        list_to_binary(Token),
+        Region)
+  end,
   {ok, Creds, list_to_binary(Expiration)}.
 
 -spec build_error_payload(aws_credentials_httpc:status_code(),

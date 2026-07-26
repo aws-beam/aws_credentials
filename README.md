@@ -97,6 +97,35 @@ Different credential providers may have other settings which you can use to
 change their behaviors.  See the documentation for each provider for more
 details.
 
+### Web Identity Provider ###
+
+The web identity provider is used for EKS workloads using IAM Roles for Service
+Accounts (IRSA) and other environments that provide web identity tokens.
+
+**Environment Variables:**
+- `AWS_ROLE_ARN` (required) - The ARN of the role to assume
+- `AWS_WEB_IDENTITY_TOKEN_FILE` (required) - Path to the OIDC token file
+- `AWS_REGION` (optional) - AWS region to include in credentials map (checked first)
+- `AWS_DEFAULT_REGION` (optional) - Fallback region if AWS_REGION not set
+
+**Region Handling:**
+
+The provider checks for region in environment variables and includes it in the
+credentials map if present. This is useful for applications that require region
+information alongside credentials. If neither environment variable is set,
+credentials are returned without a region field (maintaining backward
+compatibility).
+
+**Example in Kubernetes with IRSA:**
+
+```yaml
+env:
+  - name: AWS_REGION
+    value: "eu-west-1"
+  # AWS_ROLE_ARN and AWS_WEB_IDENTITY_TOKEN_FILE are automatically
+  # injected by the EKS IRSA webhook
+```
+
 License and copyright
 ---------------------
 This project is licensed under the terms of the Apache 2 license. It is a
