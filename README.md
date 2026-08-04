@@ -81,7 +81,13 @@ refresh credentials.
 When credentials have been found, they will be cached in a gen_server until the
 credential's expiration time. 5 minutes before expiration time the gen_server
 will attempt to acquire new credentials, so credentials will automatically be
-refreshed in the background.
+refreshed in the background. This 5 minute buffer can be overridden by setting
+the `alert_before_expiry` environment variable (in seconds) for
+`aws_credentials`:
+
+```erlang
+{aws_credentials, [{alert_before_expiry, 600}]}.
+```
 
 ### Choosing certain credentials providers ###
 
