@@ -9,8 +9,10 @@
 %% http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html#instance-metadata-security-credentials
 %%
 %% We make new credentials available at least five minutes prior to the
-%% expiration of the old credentials.
--define(ALERT_BEFORE_EXPIRY, 300). % 5 minutes
+%% expiration of the old credentials. Override via the `alert_before_expiry'
+%% application environment variable (in seconds).
+-define(ALERT_BEFORE_EXPIRY,
+        application:get_env(aws_credentials, alert_before_expiry, 300)).
 -define(RETRY_DELAY, 5). % 5 seconds
 -define(GREGORIAN_TO_EPOCH_SECONDS, 62167219200).
 
